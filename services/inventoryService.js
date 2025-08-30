@@ -1,0 +1,394 @@
+const Inventory = require('../models/Inventory');
+const { getPaginationOptions, createPaginationResponse } = require('../utils/pagination');
+const { createError } = require('../utils/apiError');
+
+class InventoryService {
+  // Create new inventory item
+  async createInventory(inventoryData, currentUser) {
+    try {
+      // Check if SKU already exists
+      if (inventoryData.sku) {
+        const existingItem = await Inventory.findOne({ sku: inventoryData.sku });
+        if (existingItem) {
+          throw createError.conflict('SKU already exists');
+        }
+      }
+
+      // Set audit fields
+      inventoryData.createdBy = currentUser._id;
+      inventoryData.updatedBy = currentUser._id;
+
+      // Create inventory item
+      const inventory = await Inventory.create(inventoryData);
+      
+      // Populate creator and updater info
+      await inventory.populate('createdBy', 'name email');
+      await inventory.populate('updatedBy', 'name email');
+
+      return inventory;
+    } catch (error) {
+      if (error.statusCode) {
+        throw error;
+      }
+      
+      if (error.name === 'ValidationError') {
+        const validationErrors = Object.values(error.errors).map(err => err.message);
+        throw createError.badRequest(`Validation failed: ${validationErrors.join(', ')}`);
+      }
+      
+      throw error;
+    }
+  }
+
+  // Get all inventory items with pagination and filters
+  async getInventoryItems(filters = {}, paginationOptions = {}) {
+    try {
+      const { page, limit, sortBy, sortOrder } = getPaginationOptions(paginationOptions);
+      
+      // Build filter query
+      const query = {};
+      
+      if (filters.type) query.type = filters.type;
+      if (filters.category) query.category = filters.category;
+      if (filters.brand) query.brand = filters.brand;
+      if (filters.condition) query.condition = filters.condition;
+      if (filters.status) query.status = filters.status;
+      if (filters.location) query.location = filters.location;
+      if  (filters.model) query.model = filters.model;
+      if (filters.year) query.year = filters.year;
+      // Text search
+      if (filters.search) {
+        query.$or = [
+          { name: { $regex: filters.search, $options: 'i' } },
+          { description: { $regex: filters.search, $options: 'i' } },
+          { sku: { $regex: filters.search, $options: 'i' } },
+          { brand: { $regex: filters.search, $options: 'i' } }
+        ];
+      }
+
+      // Price range filter
+      if (filters.minPrice || filters.maxPrice) {
+        query.sellingPrice = {};
+        if (filters.minPrice) query.sellingPrice.$gte = parseFloat(filters.minPrice);
+        if (filters.maxPrice) query.sellingPrice.$lte = parseFloat(filters.maxPrice);
+      }
+
+      // Stock filter
+      if (filters.inStock !== undefined) {
+        if (filters.inStock) {
+          query.quantity = { $gt: 0 };
+        } else {
+          query.quantity = { $lte: 0 };
+        }
+      }
+
+      // Build sort options
+      const sortOptions = {};
+      if (sortBy) {
+        sortOptions[sortBy] = sortOrder === 'desc' ? -1 : 1;
+      } else {
+        sortOptions.createdAt = -1; // Default sort by creation date
+      }
+
+      // Execute query with pagination
+      const skip = (page - 1) * limit;
+      
+      const [items, total] = await Promise.all([
+        Inventory.find(query)
+          .populate('createdBy', 'name email')
+          .populate('updatedBy', 'name email')
+          .sort(sortOptions)
+          .skip(skip)
+          .limit(limit),
+        Inventory.countDocuments(query)
+      ]);
+
+      return createPaginationResponse(items, total, page, limit);
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  // Get inventory item by ID
+  async getInventoryItemById(itemId) {
+    try {
+      const item = await Inventory.findById(itemId)
+        .populate('createdBy', 'name email')
+        .populate('updatedBy', 'name email');
+
+      if (!item) {
+        throw createError.notFound('Inventory item not found');
+      }
+
+      return item;
+    } catch (error) {
+      if (error.statusCode) {
+        throw error;
+      }
+      throw error;
+    }
+  }
+
+  // Update inventory item
+  async updateInventoryItem(itemId, updateData, currentUser) {
+    try {
+      // Check if item exists
+      const existingItem = await Inventory.findById(itemId);
+      if (!existingItem) {
+        throw createError.notFound('Inventory item not found');
+      }
+
+      // Check if SKU is being updated and if it already exists
+      if (updateData.sku && updateData.sku !== existingItem.sku) {
+        const skuExists = await Inventory.findOne({ 
+          sku: updateData.sku, 
+          _id: { $ne: itemId } 
+        });
+        if (skuExists) {
+          throw createError.conflict('SKU already exists');
+        }
+      }
+
+      // Set audit fields
+      updateData.updatedBy = currentUser._id;
+      updateData.updatedAt = new Date();
+
+      // Update item
+      const updatedItem = await Inventory.findByIdAndUpdate(
+        itemId,
+        updateData,
+        { new: true, runValidators: true }
+      ).populate('createdBy', 'name email')
+       .populate('updatedBy', 'name email');
+
+      return updatedItem;
+    } catch (error) {
+      if (error.statusCode) {
+        throw error;
+      }
+      
+      if (error.name === 'ValidationError') {
+        const validationErrors = Object.values(error.errors).map(err => err.message);
+        throw createError.badRequest(`Validation failed: ${validationErrors.join(', ')}`);
+      }
+      
+      throw error;
+    }
+  }
+
+  // Delete inventory item
+  async deleteInventoryItem(itemId, currentUser) {
+    try {
+      const item = await Inventory.findById(itemId);
+      if (!item) {
+        throw createError.notFound('Inventory item not found');
+      }
+
+      // Check if item can be deleted (e.g., no active orders)
+      if (item.quantity > 0) {
+        throw createError.forbidden('Cannot delete item with existing stock');
+      }
+
+      await Inventory.findByIdAndDelete(itemId);
+      
+      return { message: 'Inventory item deleted successfully' };
+    } catch (error) {
+      if (error.statusCode) {
+        throw error;
+      }
+      throw error;
+    }
+  }
+
+  // Update stock quantity
+  async updateStock(itemId, quantity, operation = 'add', currentUser) {
+    try {
+      const item = await Inventory.findById(itemId);
+      if (!item) {
+        throw createError.notFound('Inventory item not found');
+      }
+
+      let newQuantity;
+      switch (operation) {
+        case 'add':
+          newQuantity = item.quantity + quantity;
+          break;
+        case 'subtract':
+          newQuantity = item.quantity - quantity;
+          if (newQuantity < 0) {
+            throw createError.badRequest('Insufficient stock');
+          }
+          break;
+        case 'set':
+          newQuantity = quantity;
+          if (newQuantity < 0) {
+            throw createError.badRequest('Quantity cannot be negative');
+          }
+          break;
+        default:
+          throw createError.badRequest('Invalid operation. Use: add, subtract, or set');
+      }
+
+      const updatedItem = await Inventory.findByIdAndUpdate(
+        itemId,
+        { 
+          quantity: newQuantity,
+          updatedBy: currentUser._id,
+          updatedAt: new Date()
+        },
+        { new: true }
+      ).populate('createdBy', 'name email')
+       .populate('updatedBy', 'name email');
+
+      return updatedItem;
+    } catch (error) {
+      if (error.statusCode) {
+        throw error;
+      }
+      throw error;
+    }
+  }
+
+  // Get inventory statistics
+  async getInventoryStats(currentUser) {
+    try {
+      const stats = await Inventory.aggregate([
+        {
+          $group: {
+            _id: null,
+            totalItems: { $sum: 1 },
+            totalValue: { $sum: { $multiply: ['$sellingPrice', '$quantity'] } },
+            totalCost: { $sum: { $multiply: ['$costPrice', '$quantity'] } },
+            lowStockItems: {
+              $sum: {
+                $cond: [
+                  { $and: [{ $gt: ['$quantity', 0] }, { $lte: ['$quantity', 10] }] },
+                  1,
+                  0
+                ]
+              }
+            },
+            outOfStockItems: {
+              $sum: {
+                $cond: [{ $lte: ['$quantity', 0] }, 1, 0]
+              }
+            }
+          }
+        }
+      ]);
+
+      // Get category breakdown
+      const categoryStats = await Inventory.aggregate([
+        {
+          $group: {
+            _id: '$category',
+            count: { $sum: 1 },
+            totalValue: { $sum: { $multiply: ['$sellingPrice', '$quantity'] } }
+          }
+        },
+        { $sort: { count: -1 } }
+      ]);
+
+      // Get type breakdown
+      const typeStats = await Inventory.aggregate([
+        {
+          $group: {
+            _id: '$type',
+            count: { $sum: 1 },
+            totalValue: { $sum: { $multiply: ['$sellingPrice', '$quantity'] } }
+          }
+        }
+      ]);
+
+      return {
+        overview: stats[0] || {
+          totalItems: 0,
+          totalValue: 0,
+          totalCost: 0,
+          lowStockItems: 0,
+          outOfStockItems: 0
+        },
+        categoryBreakdown: categoryStats,
+        typeBreakdown: typeStats
+      };
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  // Search inventory items
+  async searchInventory(query, limit = 10) {
+    try {
+      const items = await Inventory.find({
+        $or: [
+          { name: { $regex: query, $options: 'i' } },
+          { description: { $regex: query, $options: 'i' } },
+          { sku: { $regex: query, $options: 'i' } },
+          { brand: { $regex: query, $options: 'i' } },
+          { category: { $regex: query, $options: 'i' } }
+        ]
+      })
+      .select('name sku brand category quantity sellingPrice images')
+      .limit(limit)
+      .sort({ quantity: -1 }); // Prioritize items with stock
+
+      return items;
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  // Get low stock alerts
+  async getLowStockAlerts(threshold = 10) {
+    try {
+      const lowStockItems = await Inventory.find({
+        quantity: { $gt: 0, $lte: threshold }
+      })
+      .select('name sku category quantity sellingPrice location')
+      .sort({ quantity: 1 });
+
+      return lowStockItems;
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  async getInventorycategory(filters) {
+    try {
+      
+      // Build the query based on filters
+      const query = {};
+      
+      if (filters.category) query.category = filters.category;
+      if (filters.brand) query.brand = filters.brand;
+      if (filters.model) query.model = filters.model;
+      if (filters.year) query.year = filters.year;
+      if (filters.type) query.type = filters.type;
+      
+      // Always filter for items in stock
+      query.quantity = { $gt: 0 };
+      query.type = 'car';
+      const items = await Inventory.find(query);
+      
+      // Extract unique values from the results
+      const categories = [...new Set(items.map(item => item.category).filter(Boolean))];
+      const brands = [...new Set(items.map(item => item.brand).filter(Boolean))];
+      const models = [...new Set(items.map(item => item.model).filter(Boolean))];
+      const years = [...new Set(items.map(item => item.year).filter(Boolean))];
+      
+      return {
+        items: items,
+        summary: {
+          category: categories,
+          brand: brands,
+          model: models,
+          year: years
+        },
+        totalItems: items.length
+      };
+    } catch (error) {
+      throw error;
+    }
+  }
+}
+module.exports = new InventoryService();
