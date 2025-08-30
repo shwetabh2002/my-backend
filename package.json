@@ -9,7 +9,8 @@
     "test": "jest",
     "seed": "node scripts/seed.js",
     "seed:inventory": "node scripts/seedInventory.js",
-    "setup": "node scripts/setup.js"
+    "setup": "node scripts/setup.js",
+    "build": "npm install && npm run setup"
   },
   "keywords": [
     "express",
