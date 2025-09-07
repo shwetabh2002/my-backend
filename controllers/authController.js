@@ -37,7 +37,18 @@ class AuthController {
   // Refresh access token
   refreshToken = async (req, res) => {
     try {
-      const { refreshToken } = req.body;
+      // Get refresh token from Authorization header
+      const authHeader = req.headers.authorization;
+      
+      if (!authHeader || !authHeader.startsWith('Bearer ')) {
+        return res.status(401).json({
+          success: false,
+          message: 'Refresh token is required in Authorization header',
+          statusCode: 401
+        });
+      }
+
+      const refreshToken = authHeader.substring(7); // Remove 'Bearer ' prefix
 
       const result = await authService.refreshAccessToken(refreshToken);
 

@@ -113,6 +113,10 @@ const schemas = {
     address: Joi.string().max(200).messages({
       'string.max': 'Address cannot exceed 200 characters'
     }),
+    // Customer ID is auto-generated, but can be provided for specific cases
+    custId: Joi.string().pattern(/^CUS-\d{3}$/).optional().messages({
+      'string.pattern.base': 'Customer ID must be in format CUS-XXX'
+    }),
     // Password is optional for customers (they can't login anyway)
     password: Joi.string().optional()
   }),
@@ -208,6 +212,19 @@ const schemas = {
       'string.max': 'Brand cannot exceed 100 characters',
       'any.required': 'Brand is required'
     }),
+    model: Joi.string().min(1).max(100).optional().messages({
+      'string.min': 'Model must be at least 1 character long',
+      'string.max': 'Model cannot exceed 100 characters'
+    }),
+    year: Joi.number().integer().min(1900).max(new Date().getFullYear() + 1).optional().messages({
+      'number.integer': 'Year must be an integer',
+      'number.min': 'Year must be at least 1900',
+      'number.max': 'Year cannot be in the future'
+    }),
+    color: Joi.string().min(1).max(50).optional().messages({
+      'string.min': 'Color must be at least 1 character long',
+      'string.max': 'Color cannot exceed 50 characters'
+    }),
     sku: Joi.string().min(3).max(50).optional().messages({
       'string.min': 'SKU must be at least 3 characters long',
       'string.max': 'SKU cannot exceed 50 characters'
@@ -281,6 +298,19 @@ const schemas = {
     brand: Joi.string().min(2).max(100).messages({
       'string.min': 'Brand must be at least 2 characters long',
       'string.max': 'Brand cannot exceed 100 characters'
+    }),
+    model: Joi.string().min(1).max(100).messages({
+      'string.min': 'Model must be at least 1 character long',
+      'string.max': 'Model cannot exceed 100 characters'
+    }),
+    year: Joi.number().integer().min(1900).max(new Date().getFullYear() + 1).messages({
+      'number.integer': 'Year must be an integer',
+      'number.min': 'Year must be at least 1900',
+      'number.max': 'Year cannot be in the future'
+    }),
+    color: Joi.string().min(1).max(50).messages({
+      'string.min': 'Color must be at least 1 character long',
+      'string.max': 'Color cannot exceed 50 characters'
     }),
     sku: Joi.string().min(3).max(50).messages({
       'string.min': 'SKU must be at least 3 characters long',

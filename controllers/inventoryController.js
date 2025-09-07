@@ -273,7 +273,7 @@ class InventoryController {
   };
   getInventorycategory = async (req, res) => {
     try {
-      const { category, brand, model, year, type } = req.query;
+      const { category, brand, model, year, type, color } = req.query;
       const filters = {};
       if(category) {
         filters.category = category;
@@ -289,6 +289,9 @@ class InventoryController {
       }
       if(type) {
         filters.type = type;
+      }
+      if(color) {
+        filters.color = color;
       }
       filters.inStock = true;
       const items = await inventoryService.getInventorycategory(filters);

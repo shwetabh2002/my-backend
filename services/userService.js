@@ -310,6 +310,67 @@ class UserService {
       throw error;
     }
   }
+  async getCustomers(options = {}) {
+    try {
+      const { page = 1, limit = 10, search, status } = options;
+      
+      // Build query
+      const query = { type: 'customer' };
+      
+      // Add status filter if provided
+      if (status) {
+        query.status = status;
+      } else {
+        // Default to active customers if no status specified
+        query.status = 'active';
+      }
+      
+      // Add search filter if provided
+      if (search) {
+        query.$or = [
+          { name: { $regex: search, $options: 'i' } },
+          { email: { $regex: search, $options: 'i' } },
+          { phone: { $regex: search, $options: 'i' } }
+        ];
+      }
+      
+      // Calculate pagination
+      const skip = (page - 1) * limit;
+      
+      // Get total count for pagination
+      const totalCustomers = await User.countDocuments(query);
+      
+      // Get customers with pagination
+      const customers = await User.find(query)
+        .select('-password -refreshToken -roleIds')
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(parseInt(limit));
+      
+      // Calculate pagination info
+      const totalPages = Math.ceil(totalCustomers / limit);
+      
+      return {
+        customers,
+        pagination: {
+          currentPage: parseInt(page),
+          totalPages,
+          totalItems: totalCustomers,
+          itemsPerPage: parseInt(limit),
+          hasNextPage: page < totalPages,
+          hasPrevPage: page > 1
+        }
+      };
+    } catch (error) {
+      throw error;
+    }
+  }
+  async getCustomerById(customerId) {
+    const customer = await User.findById(customerId);
+    delete customer.password;
+    delete customer.refreshToken;
+    return customer;
+  }
 }
 
 module.exports = new UserService();

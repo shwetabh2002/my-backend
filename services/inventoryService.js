@@ -363,6 +363,7 @@ class InventoryService {
       if (filters.brand) query.brand = filters.brand;
       if (filters.model) query.model = filters.model;
       if (filters.year) query.year = filters.year;
+      if (filters.color) query.color = filters.color;
       if (filters.type) query.type = filters.type;
       
       // Always filter for items in stock
@@ -375,6 +376,7 @@ class InventoryService {
       const brands = [...new Set(items.map(item => item.brand).filter(Boolean))];
       const models = [...new Set(items.map(item => item.model).filter(Boolean))];
       const years = [...new Set(items.map(item => item.year).filter(Boolean))];
+      const colors = [...new Set(items.map(item => item.color).filter(Boolean))];
       
       return {
         items: items,
@@ -382,7 +384,8 @@ class InventoryService {
           category: categories,
           brand: brands,
           model: models,
-          year: years
+          year: years,
+          color: colors
         },
         totalItems: items.length
       };

@@ -29,6 +29,14 @@ const userSchema = new mongoose.Schema({
       'Please enter a valid phone number'
     ]
   },
+  custId: {
+    type: String,
+    unique: true,
+    sparse: true, // Only create index if field exists
+    trim: true,
+    uppercase: true,
+    match: [/^CUS-\d{3}$/, 'Customer ID must be in format CUS-XXX']
+  },
   password: {
     type: String,
     required: function() {
@@ -67,7 +75,7 @@ const userSchema = new mongoose.Schema({
   refreshToken: {
     type: String,
     select: false
-  }
+  },
 }, {
   timestamps: true,
   toJSON: { virtuals: true },
@@ -77,6 +85,7 @@ const userSchema = new mongoose.Schema({
 // Indexes for better query performance
 userSchema.index({ email: 1 });
 userSchema.index({ phone: 1 });
+userSchema.index({ custId: 1 });
 userSchema.index({ type: 1 });
 userSchema.index({ status: 1 });
 userSchema.index({ roleIds: 1 });
@@ -100,6 +109,34 @@ userSchema.pre('save', async function(next) {
     next();
   } catch (error) {
     next(error);
+  }
+});
+
+// Pre-save middleware to generate custId for customers
+userSchema.pre('save', async function(next) {
+  if (this.isNew && this.type === 'customer' && !this.custId) {
+    try {
+      // Find the highest existing customer ID
+      const lastCustomer = await this.constructor.findOne(
+        { type: 'customer', custId: { $exists: true } },
+        { custId: 1 },
+        { sort: { custId: -1 } }
+      );
+      
+      let nextNumber = 1;
+      if (lastCustomer && lastCustomer.custId) {
+        const lastNumber = parseInt(lastCustomer.custId.split('-')[1]);
+        nextNumber = lastNumber + 1;
+      }
+      
+      // Generate new customer ID with zero-padded number
+      this.custId = `CUS-${nextNumber.toString().padStart(3, '0')}`;
+      next();
+    } catch (error) {
+      next(error);
+    }
+  } else {
+    next();
   }
 });
 

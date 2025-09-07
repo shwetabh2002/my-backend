@@ -52,6 +52,7 @@ const seedInventory = async () => {
         status: 'active',
         model: 'Camry',
         year: 2023,
+        color: 'Silver',
         images: [
           {
             url: 'https://example.com/images/camry-front.jpg',
@@ -92,6 +93,7 @@ const seedInventory = async () => {
         status: 'active',
         model: 'Civic',
         year: 2023,
+        color: 'White',
         images: [
           {
             url: 'https://example.com/images/civic-front.jpg',
@@ -132,6 +134,7 @@ const seedInventory = async () => {
         status: 'active',
         model: 'F-150',
         year: 2023,
+        color: 'Black',
         images: [
           {
             url: 'https://example.com/images/f150-front.jpg',
@@ -172,6 +175,7 @@ const seedInventory = async () => {
         status: 'active',
         model: 'X5',
         year: 2023,
+        color: 'Blue',
         images: [
           {
             url: 'https://example.com/images/x5-front.jpg',
@@ -199,6 +203,7 @@ const seedInventory = async () => {
       {
         name: 'Tesla Model 3 2024',
         type: 'car',
+        color: 'Red',
         category: 'Electric',
         brand: 'Tesla',
         sku: 'CAR-TES-001',
@@ -231,6 +236,7 @@ const seedInventory = async () => {
         updatedBy: adminUser._id
       },
       {
+        color: 'Red',
         name: 'Honda Accord 2024',
         type: 'car',
         category: 'Sedan',
@@ -280,6 +286,7 @@ const seedInventory = async () => {
         location: 'Parts Warehouse A',
         condition: 'new',
         status: 'active',
+        color: 'Red',
         images: [
           {
             url: 'https://example.com/images/oil-filter.jpg',
@@ -299,6 +306,7 @@ const seedInventory = async () => {
         updatedBy: adminUser._id
       },
       {
+        color: 'Red',
         name: 'Brake Pads - Front Set',
         type: 'part',
         category: 'Brakes',
@@ -312,6 +320,7 @@ const seedInventory = async () => {
         location: 'Parts Warehouse A',
         condition: 'new',
         status: 'active',
+        color: 'Red',
         images: [
           {
             url: 'https://example.com/images/brake-pads.jpg',
@@ -344,6 +353,7 @@ const seedInventory = async () => {
         location: 'Parts Warehouse B',
         condition: 'new',
         status: 'active',
+        color: 'Red',
         images: [
           {
             url: 'https://example.com/images/air-filter.jpg',
@@ -376,6 +386,7 @@ const seedInventory = async () => {
         location: 'Parts Warehouse B',
         condition: 'new',
         status: 'active',
+        color: 'Red',
         images: [
           {
             url: 'https://example.com/images/spark-plugs.jpg',
@@ -408,6 +419,7 @@ const seedInventory = async () => {
         location: 'Parts Warehouse B',
         condition: 'new',
         status: 'active',
+        color: 'Red',
         images: [
           {
             url: 'https://example.com/images/wiper-blades.jpg',

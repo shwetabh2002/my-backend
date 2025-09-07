@@ -6,7 +6,7 @@ const { validate, schemas } = require('../middlewares/validation');
 
 // Public routes
 router.post('/login', validate(schemas.login), authController.login);
-router.post('/refresh-token', validate(schemas.refreshToken), authController.refreshToken);
+router.post('/refresh-token', authController.refreshToken);
 
 // Protected routes
 router.use(authenticate); // Apply authentication middleware to all routes below

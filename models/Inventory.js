@@ -56,6 +56,13 @@ const inventorySchema = new mongoose.Schema({
     max: [new Date().getFullYear() + 1, 'Year cannot be in the future']
   },
   
+  // Color (for cars)
+  color: {
+    type: String,
+    trim: true,
+    maxlength: [50, 'Color cannot exceed 50 characters']
+  },
+  
   // SKU (Stock Keeping Unit)
   sku: {
     type: String,
@@ -219,6 +226,7 @@ inventorySchema.index({ sku: 1 });
 inventorySchema.index({ type: 1 });
 inventorySchema.index({ category: 1 });
 inventorySchema.index({ brand: 1 });
+inventorySchema.index({ color: 1 });
 inventorySchema.index({ status: 1 });
 inventorySchema.index({ tags: 1 });
 inventorySchema.index({ 'location.warehouse': 1 });

@@ -179,6 +179,62 @@ class UserController {
       }
     });
   });
+
+  getCustomers = async (req, res) => {
+    try {
+      const { page = 1, limit = 10, search, status } = req.query;
+      
+      const options = {
+        page: parseInt(page),
+        limit: parseInt(limit),
+        search,
+        status
+      };
+      
+      const result = await userService.getCustomers(options);
+      
+      res.status(200).json({
+        success: true,
+        message: 'Customers retrieved successfully',
+        data: result
+      });
+    } catch (error) {
+      console.error('Get customers error:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Internal server error',
+        statusCode: 500
+      });
+    }
+  };
+
+  getCustomerById = async (req, res) => {
+    try {
+      const customerId = req.params.id;
+      const customer = await userService.getCustomerById(customerId);
+      
+      if (!customer) {
+        return res.status(404).json({
+          success: false,
+          message: 'Customer not found',
+          statusCode: 404
+        });
+      }
+      
+      res.status(200).json({
+        success: true,
+        message: 'Customer retrieved successfully',
+        data: customer
+      });
+    } catch (error) {
+      console.error('Get customer by ID error:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Internal server error',
+        statusCode: 500
+      });
+    }
+  };
 }
 
 module.exports = new UserController();

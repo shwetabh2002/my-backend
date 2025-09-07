@@ -67,6 +67,15 @@ router.post('/customer',
   userController.createCustomer
 );
 
+router.get('/get-customer', 
+  isEmployeeOrAdmin, 
+  userController.getCustomers
+);
+
+router.get('/get-customer/:id', 
+  isEmployeeOrAdmin, 
+  userController.getCustomerById
+);
 // Routes with resource-specific access control
 router.get('/:id', 
   canAccessOwnResource('user', 'read'), 
