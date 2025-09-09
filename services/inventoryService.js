@@ -1,6 +1,7 @@
 const Inventory = require('../models/Inventory');
 const { getPaginationOptions, createPaginationResponse } = require('../utils/pagination');
 const { createError } = require('../utils/apiError');
+const currencyService = require('./currencyService');
 
 class InventoryService {
   // Create new inventory item
@@ -353,8 +354,12 @@ class InventoryService {
     }
   }
 
-  async getInventorycategory(filters) {
+  async getInventorycategory(filters, currencyType = 'USD', options = {}) {
     try {
+      
+      // Pagination options
+      const { page = 1, limit = 100 } = options;
+      const skip = (page - 1) * limit;
       
       // Build the query based on filters
       const query = {};
@@ -369,17 +374,52 @@ class InventoryService {
       // Always filter for items in stock
       query.quantity = { $gt: 0 };
       query.type = 'car';
-      const items = await Inventory.find(query);
       
-      // Extract unique values from the results
+      // Get total count for pagination
+      const totalItems = await Inventory.countDocuments(query);
+      
+      // Get paginated items
+      const items = await Inventory.find(query)
+        .lean()
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit);
+      
+      // Get exchange rate once for all items
+      let exchangeRate = 1.0;
+      if (currencyType && currencyType.toUpperCase() !== 'USD') {
+        try {
+          exchangeRate = await currencyService.getExchangeRate(currencyType);
+        } catch (error) {
+          console.error('Currency conversion error:', error.message);
+          exchangeRate = 1.0;
+        }
+      }
+      
+      // Convert prices efficiently
+      const convertedItems = items.map(item => {
+        const originalPrice = item.sellingPrice || 0;
+        const convertedPrice = Math.round(originalPrice * exchangeRate * 100) / 100;
+        
+        return {
+          ...item,
+          currencyType: currencyType.toUpperCase(),
+          newSellingPrice: convertedPrice
+        };
+      });
+      
+      // Get summary data efficiently (only from current page for performance)
       const categories = [...new Set(items.map(item => item.category).filter(Boolean))];
       const brands = [...new Set(items.map(item => item.brand).filter(Boolean))];
       const models = [...new Set(items.map(item => item.model).filter(Boolean))];
       const years = [...new Set(items.map(item => item.year).filter(Boolean))];
       const colors = [...new Set(items.map(item => item.color).filter(Boolean))];
       
+      // Calculate pagination info
+      const totalPages = Math.ceil(totalItems / limit);
+      
       return {
-        items: items,
+        items: convertedItems,
         summary: {
           category: categories,
           brand: brands,
@@ -387,7 +427,19 @@ class InventoryService {
           year: years,
           color: colors
         },
-        totalItems: items.length
+        pagination: {
+          currentPage: page,
+          totalPages: totalPages,
+          totalItems: totalItems,
+          itemsPerPage: limit,
+          hasNextPage: page < totalPages,
+          hasPrevPage: page > 1
+        },
+        currencyInfo: {
+          currency: currencyType.toUpperCase(),
+          exchangeRate: exchangeRate,
+          baseCurrency: 'USD'
+        }
       };
     } catch (error) {
       throw error;

@@ -273,28 +273,33 @@ class InventoryController {
   };
   getInventorycategory = async (req, res) => {
     try {
-      const { category, brand, model, year, type, color } = req.query;
+      const { 
+        category, 
+        brand, 
+        model, 
+        year, 
+        type, 
+        color, 
+        currencyType,
+        page = 1,
+        limit = 100
+      } = req.query;
+      
       const filters = {};
-      if(category) {
-        filters.category = category;
-      }
-      if(brand) {
-        filters.brand = brand;
-      }
-      if(model) {
-        filters.model = model;
-      }
-      if(year) {
-        filters.year = year;
-      }
-      if(type) {
-        filters.type = type;
-      }
-      if(color) {
-        filters.color = color;
-      }
-      filters.inStock = true;
-      const items = await inventoryService.getInventorycategory(filters);
+      if(category) filters.category = category;
+      if(brand) filters.brand = brand;
+      if(model) filters.model = model;
+      if(year) filters.year = year;
+      if(type) filters.type = type;
+      if(color) filters.color = color;
+      
+      const options = {
+        page: parseInt(page),
+        limit: Math.min(parseInt(limit), 1000) // Max 1000 items per page
+      };
+      
+      const items = await inventoryService.getInventorycategory(filters, currencyType, options);
+      
       res.status(200).json({
         success: true,
         message: 'Inventory category retrieved successfully',
