@@ -140,7 +140,11 @@ const schemas = {
       'inventory:create',
       'inventory:read',
       'inventory:update',
-      'inventory:delete'
+      'inventory:delete',
+      'company:create',
+      'company:read',
+      'company:update',
+      'company:delete'
     )).min(1).required().messages({
       'array.min': 'At least one permission is required',
       'any.required': 'Permissions are required'
@@ -167,7 +171,11 @@ const schemas = {
       'inventory:create',
       'inventory:read',
       'inventory:update',
-      'inventory:delete'
+      'inventory:delete',
+      'company:create',
+      'company:read',
+      'company:update',
+      'company:delete'
     )).min(1).messages({
       'array.min': 'At least one permission is required'
     }),
@@ -377,6 +385,364 @@ const schemas = {
     operation: Joi.string().valid('add', 'subtract', 'set').default('add').messages({
       'any.only': 'Operation must be add, subtract, or set'
     })
+  }),
+
+  // Company schemas
+  createCompany: Joi.object({
+    name: Joi.string().min(2).max(200).required().messages({
+      'string.min': 'Company name must be at least 2 characters long',
+      'string.max': 'Company name cannot exceed 200 characters',
+      'any.required': 'Company name is required'
+    }),
+    legalName: Joi.string().min(2).max(200).required().messages({
+      'string.min': 'Legal name must be at least 2 characters long',
+      'string.max': 'Legal name cannot exceed 200 characters',
+      'any.required': 'Legal name is required'
+    }),
+    industry: Joi.string().min(2).max(100).required().messages({
+      'string.min': 'Industry must be at least 2 characters long',
+      'string.max': 'Industry cannot exceed 100 characters',
+      'any.required': 'Industry is required'
+    }),
+    businessType: Joi.string().valid('Corporation', 'LLC', 'Partnership', 'Sole Proprietorship', 'Non-Profit', 'Government', 'Other').default('Corporation').messages({
+      'any.only': 'Business type must be one of: Corporation, LLC, Partnership, Sole Proprietorship, Non-Profit, Government, Other'
+    }),
+    description: Joi.string().max(1000).optional().messages({
+      'string.max': 'Description cannot exceed 1000 characters'
+    }),
+    taxId: Joi.string().max(50).optional().messages({
+      'string.max': 'Tax ID cannot exceed 50 characters'
+    }),
+    registrationNumber: Joi.string().max(50).optional().messages({
+      'string.max': 'Registration number cannot exceed 50 characters'
+    }),
+    incorporationDate: Joi.date().max('now').optional().messages({
+      'date.max': 'Incorporation date cannot be in the future'
+    }),
+    website: Joi.string().uri().optional().messages({
+      'string.uri': 'Website must be a valid URL'
+    }),
+    email: Joi.string().email().required().messages({
+      'string.email': 'Please provide a valid email address',
+      'any.required': 'Email is required'
+    }),
+    phone: Joi.string().pattern(/^\+?[\d\s\-\(\)]+$/).min(10).max(20).required().messages({
+      'string.pattern.base': 'Please provide a valid phone number',
+      'string.min': 'Phone number must be at least 10 characters',
+      'string.max': 'Phone number cannot exceed 20 characters',
+      'any.required': 'Phone is required'
+    }),
+    fax: Joi.string().pattern(/^\+?[\d\s\-\(\)]+$/).min(10).max(20).optional().messages({
+      'string.pattern.base': 'Please provide a valid fax number',
+      'string.min': 'Fax number must be at least 10 characters',
+      'string.max': 'Fax number cannot exceed 20 characters'
+    }),
+    address: Joi.object({
+      street: Joi.string().min(5).max(200).required().messages({
+        'string.min': 'Street address must be at least 5 characters long',
+        'string.max': 'Street address cannot exceed 200 characters',
+        'any.required': 'Street address is required'
+      }),
+      city: Joi.string().min(2).max(100).required().messages({
+        'string.min': 'City must be at least 2 characters long',
+        'string.max': 'City cannot exceed 100 characters',
+        'any.required': 'City is required'
+      }),
+      state: Joi.string().min(2).max(100).required().messages({
+        'string.min': 'State must be at least 2 characters long',
+        'string.max': 'State cannot exceed 100 characters',
+        'any.required': 'State is required'
+      }),
+      postalCode: Joi.string().min(3).max(20).required().messages({
+        'string.min': 'Postal code must be at least 3 characters long',
+        'string.max': 'Postal code cannot exceed 20 characters',
+        'any.required': 'Postal code is required'
+      }),
+      country: Joi.string().min(2).max(100).default('United States').messages({
+        'string.min': 'Country must be at least 2 characters long',
+        'string.max': 'Country cannot exceed 100 characters'
+      })
+    }).required().messages({
+      'any.required': 'Address is required'
+    }),
+    billingAddress: Joi.object({
+      street: Joi.string().min(5).max(200).required(),
+      city: Joi.string().min(2).max(100).required(),
+      state: Joi.string().min(2).max(100).required(),
+      postalCode: Joi.string().min(3).max(20).required(),
+      country: Joi.string().min(2).max(100).default('United States')
+    }).optional(),
+    shippingAddress: Joi.object({
+      street: Joi.string().min(5).max(200).required(),
+      city: Joi.string().min(2).max(100).required(),
+      state: Joi.string().min(2).max(100).required(),
+      postalCode: Joi.string().min(3).max(20).required(),
+      country: Joi.string().min(2).max(100).default('United States')
+    }).optional(),
+    contacts: Joi.array().items(Joi.object({
+      name: Joi.string().min(2).max(100).required().messages({
+        'string.min': 'Contact name must be at least 2 characters long',
+        'string.max': 'Contact name cannot exceed 100 characters',
+        'any.required': 'Contact name is required'
+      }),
+      email: Joi.string().email().required().messages({
+        'string.email': 'Please provide a valid email address',
+        'any.required': 'Contact email is required'
+      }),
+      phone: Joi.string().pattern(/^\+?[\d\s\-\(\)]+$/).min(10).max(20).required().messages({
+        'string.pattern.base': 'Please provide a valid phone number',
+        'string.min': 'Phone number must be at least 10 characters',
+        'string.max': 'Phone number cannot exceed 20 characters',
+        'any.required': 'Contact phone is required'
+      }),
+      position: Joi.string().min(2).max(100).required().messages({
+        'string.min': 'Position must be at least 2 characters long',
+        'string.max': 'Position cannot exceed 100 characters',
+        'any.required': 'Position is required'
+      }),
+      isPrimary: Joi.boolean().default(false)
+    })).optional().messages({
+      'array.base': 'Contacts must be an array'
+    }),
+    annualRevenue: Joi.number().min(0).optional().messages({
+      'number.min': 'Annual revenue cannot be negative'
+    }),
+    currency: Joi.string().length(3).uppercase().default('USD').messages({
+      'string.length': 'Currency must be exactly 3 characters',
+      'string.uppercase': 'Currency must be uppercase'
+    }),
+    creditLimit: Joi.number().min(0).default(0).messages({
+      'number.min': 'Credit limit cannot be negative'
+    }),
+    paymentTerms: Joi.string().valid('Net 15', 'Net 30', 'Net 45', 'Net 60', 'Due on Receipt', 'Prepaid', 'Other').default('Net 30').messages({
+      'any.only': 'Payment terms must be one of: Net 15, Net 30, Net 45, Net 60, Due on Receipt, Prepaid, Other'
+    }),
+    status: Joi.string().valid('active', 'inactive', 'suspended', 'pending', 'archived').default('active').messages({
+      'any.only': 'Status must be one of: active, inactive, suspended, pending, archived'
+    }),
+    priority: Joi.string().valid('low', 'medium', 'high', 'critical').default('medium').messages({
+      'any.only': 'Priority must be one of: low, medium, high, critical'
+    }),
+    customerTier: Joi.string().valid('bronze', 'silver', 'gold', 'platinum', 'enterprise').default('bronze').messages({
+      'any.only': 'Customer tier must be one of: bronze, silver, gold, platinum, enterprise'
+    }),
+    socialMedia: Joi.object({
+      linkedin: Joi.string().uri().optional().messages({
+        'string.uri': 'LinkedIn URL must be valid'
+      }),
+      twitter: Joi.string().uri().optional().messages({
+        'string.uri': 'Twitter URL must be valid'
+      }),
+      facebook: Joi.string().uri().optional().messages({
+        'string.uri': 'Facebook URL must be valid'
+      })
+    }).optional(),
+    tags: Joi.array().items(Joi.string().min(1).max(50)).optional().messages({
+      'array.base': 'Tags must be an array',
+      'string.min': 'Tag must be at least 1 character long',
+      'string.max': 'Tag cannot exceed 50 characters'
+    }),
+    categories: Joi.array().items(Joi.string().min(1).max(100)).optional().messages({
+      'array.base': 'Categories must be an array',
+      'string.min': 'Category must be at least 1 character long',
+      'string.max': 'Category cannot exceed 100 characters'
+    }),
+    notes: Joi.string().max(2000).optional().messages({
+      'string.max': 'Notes cannot exceed 2000 characters'
+    }),
+    internalNotes: Joi.string().max(2000).optional().messages({
+      'string.max': 'Internal notes cannot exceed 2000 characters'
+    })
+  }),
+
+  updateCompany: Joi.object({
+    name: Joi.string().min(2).max(200).messages({
+      'string.min': 'Company name must be at least 2 characters long',
+      'string.max': 'Company name cannot exceed 200 characters'
+    }),
+    legalName: Joi.string().min(2).max(200).messages({
+      'string.min': 'Legal name must be at least 2 characters long',
+      'string.max': 'Legal name cannot exceed 200 characters'
+    }),
+    industry: Joi.string().min(2).max(100).messages({
+      'string.min': 'Industry must be at least 2 characters long',
+      'string.max': 'Industry cannot exceed 100 characters'
+    }),
+    businessType: Joi.string().valid('Corporation', 'LLC', 'Partnership', 'Sole Proprietorship', 'Non-Profit', 'Government', 'Other').messages({
+      'any.only': 'Business type must be one of: Corporation, LLC, Partnership, Sole Proprietorship, Non-Profit, Government, Other'
+    }),
+    description: Joi.string().max(1000).messages({
+      'string.max': 'Description cannot exceed 1000 characters'
+    }),
+    taxId: Joi.string().max(50).messages({
+      'string.max': 'Tax ID cannot exceed 50 characters'
+    }),
+    registrationNumber: Joi.string().max(50).messages({
+      'string.max': 'Registration number cannot exceed 50 characters'
+    }),
+    incorporationDate: Joi.date().max('now').messages({
+      'date.max': 'Incorporation date cannot be in the future'
+    }),
+    website: Joi.string().uri().messages({
+      'string.uri': 'Website must be a valid URL'
+    }),
+    email: Joi.string().email().messages({
+      'string.email': 'Please provide a valid email address'
+    }),
+    phone: Joi.string().pattern(/^\+?[\d\s\-\(\)]+$/).min(10).max(20).messages({
+      'string.pattern.base': 'Please provide a valid phone number',
+      'string.min': 'Phone number must be at least 10 characters',
+      'string.max': 'Phone number cannot exceed 20 characters'
+    }),
+    fax: Joi.string().pattern(/^\+?[\d\s\-\(\)]+$/).min(10).max(20).messages({
+      'string.pattern.base': 'Please provide a valid fax number',
+      'string.min': 'Fax number must be at least 10 characters',
+      'string.max': 'Fax number cannot exceed 20 characters'
+    }),
+    address: Joi.object({
+      street: Joi.string().min(5).max(200).required(),
+      city: Joi.string().min(2).max(100).required(),
+      state: Joi.string().min(2).max(100).required(),
+      postalCode: Joi.string().min(3).max(20).required(),
+      country: Joi.string().min(2).max(100).default('United States')
+    }).optional(),
+    billingAddress: Joi.object({
+      street: Joi.string().min(5).max(200).required(),
+      city: Joi.string().min(2).max(100).required(),
+      state: Joi.string().min(2).max(100).required(),
+      postalCode: Joi.string().min(3).max(20).required(),
+      country: Joi.string().min(2).max(100).default('United States')
+    }).optional(),
+    shippingAddress: Joi.object({
+      street: Joi.string().min(5).max(200).required(),
+      city: Joi.string().min(2).max(100).required(),
+      state: Joi.string().min(2).max(100).required(),
+      postalCode: Joi.string().min(3).max(20).required(),
+      country: Joi.string().min(2).max(100).default('United States')
+    }).optional(),
+    annualRevenue: Joi.number().min(0).messages({
+      'number.min': 'Annual revenue cannot be negative'
+    }),
+    currency: Joi.string().length(3).uppercase().messages({
+      'string.length': 'Currency must be exactly 3 characters',
+      'string.uppercase': 'Currency must be uppercase'
+    }),
+    creditLimit: Joi.number().min(0).messages({
+      'number.min': 'Credit limit cannot be negative'
+    }),
+    paymentTerms: Joi.string().valid('Net 15', 'Net 30', 'Net 45', 'Net 60', 'Due on Receipt', 'Prepaid', 'Other').messages({
+      'any.only': 'Payment terms must be one of: Net 15, Net 30, Net 45, Net 60, Due on Receipt, Prepaid, Other'
+    }),
+    status: Joi.string().valid('active', 'inactive', 'suspended', 'pending', 'archived').messages({
+      'any.only': 'Status must be one of: active, inactive, suspended, pending, archived'
+    }),
+    priority: Joi.string().valid('low', 'medium', 'high', 'critical').messages({
+      'any.only': 'Priority must be one of: low, medium, high, critical'
+    }),
+    customerTier: Joi.string().valid('bronze', 'silver', 'gold', 'platinum', 'enterprise').messages({
+      'any.only': 'Customer tier must be one of: bronze, silver, gold, platinum, enterprise'
+    }),
+    socialMedia: Joi.object({
+      linkedin: Joi.string().uri().optional(),
+      twitter: Joi.string().uri().optional(),
+      facebook: Joi.string().uri().optional()
+    }).optional(),
+    tags: Joi.array().items(Joi.string().min(1).max(50)).messages({
+      'array.base': 'Tags must be an array',
+      'string.min': 'Tag must be at least 1 character long',
+      'string.max': 'Tag cannot exceed 50 characters'
+    }),
+    categories: Joi.array().items(Joi.string().min(1).max(100)).messages({
+      'array.base': 'Categories must be an array',
+      'string.min': 'Category must be at least 1 character long',
+      'string.max': 'Category cannot exceed 100 characters'
+    }),
+    notes: Joi.string().max(2000).messages({
+      'string.max': 'Notes cannot exceed 2000 characters'
+    }),
+    internalNotes: Joi.string().max(2000).messages({
+      'string.max': 'Internal notes cannot exceed 2000 characters'
+    })
+  }).min(1), // At least one field must be provided
+
+  updateCompanyStatus: Joi.object({
+    status: Joi.string().valid('active', 'inactive', 'suspended', 'pending', 'archived').required().messages({
+      'any.only': 'Status must be one of: active, inactive, suspended, pending, archived',
+      'any.required': 'Status is required'
+    })
+  }),
+
+  addContact: Joi.object({
+    name: Joi.string().min(2).max(100).required().messages({
+      'string.min': 'Contact name must be at least 2 characters long',
+      'string.max': 'Contact name cannot exceed 100 characters',
+      'any.required': 'Contact name is required'
+    }),
+    email: Joi.string().email().required().messages({
+      'string.email': 'Please provide a valid email address',
+      'any.required': 'Contact email is required'
+    }),
+    phone: Joi.string().pattern(/^\+?[\d\s\-\(\)]+$/).min(10).max(20).required().messages({
+      'string.pattern.base': 'Please provide a valid phone number',
+      'string.min': 'Phone number must be at least 10 characters',
+      'string.max': 'Phone number cannot exceed 20 characters',
+      'any.required': 'Contact phone is required'
+    }),
+    position: Joi.string().min(2).max(100).required().messages({
+      'string.min': 'Position must be at least 2 characters long',
+      'string.max': 'Position cannot exceed 100 characters',
+      'any.required': 'Position is required'
+    }),
+    isPrimary: Joi.boolean().default(false)
+  }),
+
+  updateContact: Joi.object({
+    name: Joi.string().min(2).max(100).messages({
+      'string.min': 'Contact name must be at least 2 characters long',
+      'string.max': 'Contact name cannot exceed 100 characters'
+    }),
+    email: Joi.string().email().messages({
+      'string.email': 'Please provide a valid email address'
+    }),
+    phone: Joi.string().pattern(/^\+?[\d\s\-\(\)]+$/).min(10).max(20).messages({
+      'string.pattern.base': 'Please provide a valid phone number',
+      'string.min': 'Phone number must be at least 10 characters',
+      'string.max': 'Phone number cannot exceed 20 characters'
+    }),
+    position: Joi.string().min(2).max(100).messages({
+      'string.min': 'Position must be at least 2 characters long',
+      'string.max': 'Position cannot exceed 100 characters'
+    }),
+    isPrimary: Joi.boolean()
+  }).min(1), // At least one field must be provided
+
+  bulkUpdateCompanies: Joi.object({
+    companyIds: Joi.array().items(Joi.string().hex().length(24)).min(1).required().messages({
+      'array.min': 'At least one company ID is required',
+      'any.required': 'Company IDs are required'
+    }),
+    updateData: Joi.object().min(1).required().messages({
+      'object.min': 'At least one field must be provided for update',
+      'any.required': 'Update data is required'
+    })
+  }),
+
+  companyFilters: Joi.object({
+    search: Joi.string().min(1).max(100).messages({
+      'string.min': 'Search term must be at least 1 character long',
+      'string.max': 'Search term cannot exceed 100 characters'
+    }),
+    status: Joi.string().valid('active', 'inactive', 'suspended', 'pending', 'archived'),
+    industry: Joi.string().min(1).max(100).messages({
+      'string.min': 'Industry must be at least 1 character long',
+      'string.max': 'Industry cannot exceed 100 characters'
+    }),
+    businessType: Joi.string().valid('Corporation', 'LLC', 'Partnership', 'Sole Proprietorship', 'Non-Profit', 'Government', 'Other'),
+    priority: Joi.string().valid('low', 'medium', 'high', 'critical'),
+    customerTier: Joi.string().valid('bronze', 'silver', 'gold', 'platinum', 'enterprise'),
+    createdBy: Joi.string().hex().length(24),
+    dateFrom: Joi.date().max('now'),
+    dateTo: Joi.date().max('now')
   })
 };
 

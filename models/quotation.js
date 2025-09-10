@@ -27,10 +27,6 @@ const quotationSchema = new mongoose.Schema({
     ref: 'Inventory',
     required: true
   }],
-  total: {
-    type: Number,
-    required: true
-  },
   totalDiscount: {
     type: Number,
     required: true
@@ -39,6 +35,21 @@ const quotationSchema = new mongoose.Schema({
     type: Number,
     required: true
   },
+  createdBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    required: true
+  },
+  updatedBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    required: true
+  },
+  currencyType: {
+    type: String,
+    required: true
+  },
+  
 
 }, {
   timestamps: true,

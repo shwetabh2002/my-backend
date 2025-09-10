@@ -9,6 +9,8 @@
     "test": "jest",
     "seed": "node scripts/seed.js",
     "seed:inventory": "node scripts/seedInventory.js",
+    "seed:companies": "node scripts/seedCompanies.js",
+    "seed:owner-company": "node scripts/seedOwnerCompany.js",
     "setup": "node scripts/setup.js",
     "build": "npm install && npm run setup"
   },
