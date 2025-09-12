@@ -53,6 +53,29 @@ const seedInventory = async () => {
         model: 'Camry',
         year: 2023,
         color: 'Silver',
+        vinNumber: [
+          {
+            status: 'active',
+            chasisNumber: '1HGBH41JXMN109186'
+          },
+          {
+            status: 'active',
+            chasisNumber: '1HGBH41JXMN109187'
+          },
+          {
+            status: 'active',
+            chasisNumber: '1HGBH41JXMN109188'
+          },
+          {
+            status: 'active',
+            chasisNumber: '1HGBH41JXMN109189'
+          },
+          {
+            status: 'active',
+            chasisNumber: '1HGBH41JXMN109190'
+          }
+        ],
+        interiorColor: 'Black',
         images: [
           {
             url: 'https://example.com/images/camry-front.jpg',
@@ -94,6 +117,21 @@ const seedInventory = async () => {
         model: 'Civic',
         year: 2023,
         color: 'White',
+        vinNumber: [
+          {
+            status: 'active',
+            chasisNumber: '2HGBH41JXMN109188'
+          },
+          {
+            status: 'active',
+            chasisNumber: '2HGBH41JXMN109189'
+          },
+          {
+            status: 'active',
+            chasisNumber: '2HGBH41JXMN109190'
+          }
+        ],
+        interiorColor: 'Gray',
         images: [
           {
             url: 'https://example.com/images/civic-front.jpg',
@@ -135,6 +173,17 @@ const seedInventory = async () => {
         model: 'F-150',
         year: 2023,
         color: 'Black',
+        vinNumber: [
+          {
+            status: 'active',
+            chasisNumber: '3FGBH41JXMN109189'
+          },
+          {
+            status: 'active',
+            chasisNumber: '3FGBH41JXMN109190'
+          }
+        ],
+        interiorColor: 'Brown',
         images: [
           {
             url: 'https://example.com/images/f150-front.jpg',
@@ -176,6 +225,13 @@ const seedInventory = async () => {
         model: 'X5',
         year: 2023,
         color: 'Blue',
+        vinNumber: [
+          {
+            status: 'active',
+            chasisNumber: '4FGBH41JXMN109190'
+          }
+        ],
+        interiorColor: 'Cream',
         images: [
           {
             url: 'https://example.com/images/x5-front.jpg',
@@ -204,6 +260,21 @@ const seedInventory = async () => {
         name: 'Tesla Model 3 2024',
         type: 'car',
         color: 'Red',
+        vinNumber: [
+          {
+            status: 'active',
+            chasisNumber: '5FGBH41JXMN109191'
+          },
+          {
+            status: 'active',
+            chasisNumber: '5FGBH41JXMN109192'
+          },
+          {
+            status: 'active',
+            chasisNumber: '5FGBH41JXMN109193'
+          }
+        ],
+        interiorColor: 'White',
         category: 'Electric',
         brand: 'Tesla',
         sku: 'CAR-TES-001',
@@ -237,6 +308,25 @@ const seedInventory = async () => {
       },
       {
         color: 'Red',
+        vinNumber: [
+          {
+            status: 'active',
+            chasisNumber: '6FGBH41JXMN109192'
+          },
+          {
+            status: 'active',
+            chasisNumber: '6FGBH41JXMN109193'
+          },
+          {
+            status: 'active',
+            chasisNumber: '6FGBH41JXMN109194'
+          },
+          {
+            status: 'active',
+            chasisNumber: '6FGBH41JXMN109195'
+          }
+        ],
+        interiorColor: 'Black',
         name: 'Honda Accord 2024',
         type: 'car',
         category: 'Sedan',

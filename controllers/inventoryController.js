@@ -280,6 +280,7 @@ class InventoryController {
         year, 
         type, 
         color, 
+        interiorColor,
         currencyType,
         page = 1,
         limit = 100
@@ -292,6 +293,7 @@ class InventoryController {
       if(year) filters.year = year;
       if(type) filters.type = type;
       if(color) filters.color = color;
+      if(interiorColor) filters.interiorColor = interiorColor;
       
       const options = {
         page: parseInt(page),

@@ -11,6 +11,7 @@
     "seed:inventory": "node scripts/seedInventory.js",
     "seed:companies": "node scripts/seedCompanies.js",
     "seed:owner-company": "node scripts/seedOwnerCompany.js",
+    "cleanup:quotations": "node scripts/cleanupQuotations.js",
     "setup": "node scripts/setup.js",
     "build": "npm install && npm run setup"
   },

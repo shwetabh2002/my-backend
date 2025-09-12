@@ -103,7 +103,8 @@ const seedOwnerCompany = async () => {
       notes: 'This is your company that sells products to customers',
       internalNotes: 'Owner company - used for invoices, quotations, and business documents',
       createdBy: adminUser._id,
-      termCondition: "  ksjefwed ewkc ewkfnewalfnewlDKewkc wedfnewlkfdmewcm wekcewlfinew "
+      termCondition: "  ksjefwed ewkc ewkfnewalfnewlDKewkc wedfnewlkfdmewcm wekcewlfinew ",
+      VAT:10
     });
 
     await ownerCompany.save();

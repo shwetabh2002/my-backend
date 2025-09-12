@@ -144,7 +144,11 @@ const schemas = {
       'company:create',
       'company:read',
       'company:update',
-      'company:delete'
+      'company:delete',
+      'quotation:create',
+      'quotation:read',
+      'quotation:update',
+      'quotation:delete'
     )).min(1).required().messages({
       'array.min': 'At least one permission is required',
       'any.required': 'Permissions are required'
@@ -175,7 +179,11 @@ const schemas = {
       'company:create',
       'company:read',
       'company:update',
-      'company:delete'
+      'company:delete',
+      'quotation:create',
+      'quotation:read',
+      'quotation:update',
+      'quotation:delete'
     )).min(1).messages({
       'array.min': 'At least one permission is required'
     }),
@@ -743,6 +751,294 @@ const schemas = {
     createdBy: Joi.string().hex().length(24),
     dateFrom: Joi.date().max('now'),
     dateTo: Joi.date().max('now')
+  }),
+
+  // Quotation schemas
+  createQuotation: Joi.object({
+    custId: Joi.string().required().messages({
+      'any.required': 'Customer ID is required'
+    }),
+    items: Joi.array().items(Joi.object({
+      // Inventory fields (flat structure)
+      itemId: Joi.string().hex().length(24).required().messages({
+        'any.required': 'Item ID is required'
+      }),
+      name: Joi.string().trim().max(200).required().messages({
+        'string.max': 'Product name cannot exceed 200 characters',
+        'any.required': 'Product name is required'
+      }),
+      type: Joi.string().valid('car', 'part').required().messages({
+        'any.only': 'Product type must be car or part',
+        'any.required': 'Product type is required'
+      }),
+      category: Joi.string().trim().max(100).required().messages({
+        'string.max': 'Category cannot exceed 100 characters',
+        'any.required': 'Category is required'
+      }),
+      brand: Joi.string().trim().max(100).required().messages({
+        'string.max': 'Brand cannot exceed 100 characters',
+        'any.required': 'Brand is required'
+      }),
+      model: Joi.string().trim().max(100).optional().messages({
+        'string.max': 'Model cannot exceed 100 characters'
+      }),
+      year: Joi.number().integer().min(1900).max(new Date().getFullYear() + 1).optional().messages({
+        'number.integer': 'Year must be an integer',
+        'number.min': 'Year must be at least 1900',
+        'number.max': 'Year cannot be in the future'
+      }),
+      color: Joi.string().trim().max(50).optional().messages({
+        'string.max': 'Color cannot exceed 50 characters'
+      }),
+      sku: Joi.string().trim().uppercase().required().messages({
+        'any.required': 'SKU is required'
+      }),
+      description: Joi.string().trim().max(1000).optional().messages({
+        'string.max': 'Description cannot exceed 1000 characters'
+      }),
+      specifications: Joi.object().pattern(Joi.string(), Joi.string()).optional().messages({
+        'object.pattern': 'Specifications must be key-value pairs'
+      }),
+      sellingPrice: Joi.number().min(0).required().messages({
+        'number.min': 'Selling price cannot be negative',
+        'any.required': 'Selling price is required'
+      }),
+      condition: Joi.string().valid('new', 'used', 'refurbished', 'damaged').default('new').messages({
+        'any.only': 'Condition must be new, used, refurbished, or damaged'
+      }),
+      status: Joi.string().valid('active', 'inactive', 'discontinued', 'out_of_stock').default('active').messages({
+        'any.only': 'Status must be active, inactive, discontinued, or out_of_stock'
+      }),
+      dimensions: Joi.object({
+        length: Joi.number().min(0).optional().messages({
+          'number.min': 'Length cannot be negative'
+        }),
+        width: Joi.number().min(0).optional().messages({
+          'number.min': 'Width cannot be negative'
+        }),
+        height: Joi.number().min(0).optional().messages({
+          'number.min': 'Height cannot be negative'
+        }),
+        weight: Joi.number().min(0).optional().messages({
+          'number.min': 'Weight cannot be negative'
+        })
+      }).optional(),
+      tags: Joi.array().items(Joi.string().trim().lowercase()).optional(),
+      
+      // VIN and Interior Color fields
+      vinNumbers: Joi.array().items(Joi.object({
+        status: Joi.string().valid('active', 'inactive', 'hold', 'sold').default('active').messages({
+          'any.only': 'VIN status must be active, inactive, hold, or sold'
+        }),
+        chasisNumber: Joi.string().trim().uppercase().required().messages({
+          'any.required': 'Chassis number is required for VIN'
+        })
+      })).optional(),
+      interiorColor: Joi.string().trim().optional(),
+      
+      // Quotation-specific fields
+      quantity: Joi.number().integer().min(1).required().messages({
+        'number.integer': 'Quantity must be an integer',
+        'number.min': 'Quantity must be at least 1',
+        'any.required': 'Quantity is required'
+      })
+    })).min(1).required().messages({
+      'array.min': 'At least one item is required',
+      'any.required': 'Items are required'
+    }),
+    discount: Joi.number().min(0).default(0).messages({
+      'number.min': 'Total discount cannot be negative'
+    }),
+    discountType: Joi.string().valid('percentage', 'fixed').default('percentage').messages({
+      'any.only': 'Discount type must be percentage or fixed'
+    }),
+    VAT: Joi.number().min(0).max(100).optional().messages({
+      'number.min': 'VAT cannot be negative',
+      'number.max': 'VAT cannot exceed 100'
+    }),
+    currency: Joi.string().length(3).uppercase().default('AED').messages({
+      'string.length': 'Currency must be exactly 3 characters',
+      'string.uppercase': 'Currency must be uppercase'
+    }),
+    termsAndConditions: Joi.string().max(2000).optional().messages({
+      'string.max': 'Terms and conditions cannot exceed 2000 characters'
+    }),
+    notes: Joi.string().max(1000).optional().messages({
+      'string.max': 'Notes cannot exceed 1000 characters'
+    }),
+    paymentTerms: Joi.string().max(200).optional().messages({
+      'string.max': 'Payment terms cannot exceed 200 characters'
+    })
+  }),
+
+  updateQuotation: Joi.object({
+    customer: Joi.object({
+      custId: Joi.string().messages({
+        'string.hex': 'Customer ID must be a valid string'
+      }),
+      address: Joi.object({
+        street: Joi.string().max(200).messages({
+          'string.max': 'Street address cannot exceed 200 characters'
+        }),
+        city: Joi.string().max(100).messages({
+          'string.max': 'City cannot exceed 100 characters'
+        }),
+        state: Joi.string().max(100).messages({
+          'string.max': 'State cannot exceed 100 characters'
+        }),
+        postalCode: Joi.string().max(20).messages({
+          'string.max': 'Postal code cannot exceed 20 characters'
+        }),
+        country: Joi.string().max(100).messages({
+          'string.max': 'Country cannot exceed 100 characters'
+        })
+      }).optional()
+    }).optional(),
+    validTill: Joi.date().min('now').messages({
+      'date.min': 'Valid till date cannot be in the past'
+    }),
+    status: Joi.string().valid('draft', 'sent', 'viewed', 'accepted', 'rejected', 'expired', 'converted').messages({
+      'any.only': 'Status must be one of: draft, sent, viewed, accepted, rejected, expired, converted'
+    }),
+    items: Joi.array().items(Joi.object({
+      // Inventory fields (flat structure)
+      name: Joi.string().trim().max(200).required().messages({
+        'string.max': 'Product name cannot exceed 200 characters',
+        'any.required': 'Product name is required'
+      }),
+      type: Joi.string().valid('car', 'part').required().messages({
+        'any.only': 'Product type must be car or part',
+        'any.required': 'Product type is required'
+      }),
+      category: Joi.string().trim().max(100).required().messages({
+        'string.max': 'Category cannot exceed 100 characters',
+        'any.required': 'Category is required'
+      }),
+      subcategory: Joi.string().trim().max(100).optional().messages({
+        'string.max': 'Subcategory cannot exceed 100 characters'
+      }),
+      brand: Joi.string().trim().max(100).required().messages({
+        'string.max': 'Brand cannot exceed 100 characters',
+        'any.required': 'Brand is required'
+      }),
+      model: Joi.string().trim().max(100).optional().messages({
+        'string.max': 'Model cannot exceed 100 characters'
+      }),
+      year: Joi.number().integer().min(1900).max(new Date().getFullYear() + 1).optional().messages({
+        'number.integer': 'Year must be an integer',
+        'number.min': 'Year must be at least 1900',
+        'number.max': 'Year cannot be in the future'
+      }),
+      color: Joi.string().trim().max(50).optional().messages({
+        'string.max': 'Color cannot exceed 50 characters'
+      }),
+      sku: Joi.string().trim().uppercase().required().messages({
+        'any.required': 'SKU is required'
+      }),
+      description: Joi.string().trim().max(1000).optional().messages({
+        'string.max': 'Description cannot exceed 1000 characters'
+      }),
+      costPrice: Joi.number().min(0).required().messages({
+        'number.min': 'Cost price cannot be negative',
+        'any.required': 'Cost price is required'
+      }),
+      sellingPrice: Joi.number().min(0).required().messages({
+        'number.min': 'Selling price cannot be negative',
+        'any.required': 'Selling price is required'
+      }),
+      condition: Joi.string().valid('new', 'used', 'refurbished', 'damaged').messages({
+        'any.only': 'Condition must be new, used, refurbished, or damaged'
+      }),
+      status: Joi.string().valid('active', 'inactive', 'discontinued', 'out_of_stock').messages({
+        'any.only': 'Status must be active, inactive, discontinued, or out_of_stock'
+      }),
+      
+      // VIN and Interior Color fields
+      vinNumbers: Joi.array().items(Joi.object({
+        status: Joi.string().valid('active', 'inactive', 'hold', 'sold').default('active').messages({
+          'any.only': 'VIN status must be active, inactive, hold, or sold'
+        }),
+        chasisNumber: Joi.string().trim().uppercase().required().messages({
+          'any.required': 'Chassis number is required for VIN'
+        })
+      })).optional(),
+      interiorColor: Joi.string().trim().optional(),
+      
+      // Quotation-specific fields
+      quantity: Joi.number().integer().min(1).required().messages({
+        'number.integer': 'Quantity must be an integer',
+        'number.min': 'Quantity must be at least 1',
+        'any.required': 'Quantity is required'
+      }),
+      unitPrice: Joi.number().min(0).optional().messages({
+        'number.min': 'Unit price cannot be negative'
+      }),
+    })).min(1).messages({
+      'array.min': 'At least one item is required'
+    }),
+    totalDiscount: Joi.number().min(0).messages({
+      'number.min': 'Total discount cannot be negative'
+    }),
+    discountType: Joi.string().valid('percentage', 'fixed').messages({
+      'any.only': 'Discount type must be percentage or fixed'
+    }),
+    currency: Joi.string().length(3).uppercase().messages({
+      'string.length': 'Currency must be exactly 3 characters',
+      'string.uppercase': 'Currency must be uppercase'
+    }),
+    exchangeRate: Joi.number().min(0).messages({
+      'number.min': 'Exchange rate cannot be negative'
+    }),
+    termsAndConditions: Joi.string().max(2000).messages({
+      'string.max': 'Terms and conditions cannot exceed 2000 characters'
+    }),
+    notes: Joi.string().max(1000).messages({
+      'string.max': 'Notes cannot exceed 1000 characters'
+    }),
+    deliveryAddress: Joi.object({
+      street: Joi.string().max(200).messages({
+        'string.max': 'Street address cannot exceed 200 characters'
+      }),
+      city: Joi.string().max(100).messages({
+        'string.max': 'City cannot exceed 100 characters'
+      }),
+      state: Joi.string().max(100).messages({
+        'string.max': 'State cannot exceed 100 characters'
+      }),
+      postalCode: Joi.string().max(20).messages({
+        'string.max': 'Postal code cannot exceed 20 characters'
+      }),
+      country: Joi.string().max(100).messages({
+        'string.max': 'Country cannot exceed 100 characters'
+      })
+    }).optional(),
+    paymentTerms: Joi.string().valid('Due on Receipt', 'Net 15', 'Net 30', 'Net 45', 'Net 60', 'Prepaid', 'Other').messages({
+      'any.only': 'Payment terms must be one of: Due on Receipt, Net 15, Net 30, Net 45, Net 60, Prepaid, Other'
+    })
+  }).min(1), // At least one field must be provided
+
+  updateQuotationStatus: Joi.object({
+    status: Joi.string().valid('draft', 'sent', 'viewed', 'accepted', 'rejected', 'expired', 'converted').required().messages({
+      'any.only': 'Status must be one of: draft, sent, viewed, accepted, rejected, expired, converted',
+      'any.required': 'Status is required'
+    })
+  }),
+
+  quotationFilters: Joi.object({
+    search: Joi.string().min(1).max(100).messages({
+      'string.min': 'Search term must be at least 1 character long',
+      'string.max': 'Search term cannot exceed 100 characters'
+    }),
+    status: Joi.string().valid('draft', 'sent', 'viewed', 'accepted', 'rejected', 'expired', 'converted'),
+    customerId: Joi.string().min(1).max(20).messages({
+      'string.min': 'Customer ID must be at least 1 character long',
+      'string.max': 'Customer ID cannot exceed 20 characters'
+    }),
+    createdBy: Joi.string().hex().length(24),
+    dateFrom: Joi.date().max('now'),
+    dateTo: Joi.date().max('now'),
+    validTillFrom: Joi.date().max('now'),
+    validTillTo: Joi.date().max('now')
   })
 };
 

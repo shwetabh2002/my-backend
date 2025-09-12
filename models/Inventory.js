@@ -107,7 +107,19 @@ const inventorySchema = new mongoose.Schema({
     required: [true, 'Selling price is required'],
     min: [0, 'Selling price cannot be negative']
   },
-  
+  vinNumber:[
+    {
+      status:{
+        type:String,
+      },
+      chasisNumber:{
+        type:String,
+      }
+    },
+  ],
+  interiorColor:{
+    type:String,
+  },
   // Stock management
   quantity: {
     type: Number,
@@ -169,7 +181,7 @@ const inventorySchema = new mongoose.Schema({
   status: {
     type: String,
     enum: {
-      values: ['active', 'inactive', 'discontinued', 'out_of_stock'],
+      values: ['active', 'inactive', 'discontinued', 'out_of_stock','sold','hold'],
       message: 'Status must be active, inactive, discontinued, or out_of_stock'
     },
     default: 'active'
@@ -264,7 +276,7 @@ inventorySchema.pre('save', function(next) {
   // Auto-update status based on quantity
   if (this.quantity === 0) {
     this.status = 'out_of_stock';
-  } else if (this.status === 'out_of_stock' && this.quantity > 0) {
+  } else if (this.status === 'out_of_stock' && this.quantity > 0 && this.status !== 'sold') {
     this.status = 'active';
   }
   
@@ -305,7 +317,7 @@ inventorySchema.methods.updateStock = function(quantity, type = 'add') {
   // Update status based on new quantity
   if (this.quantity === 0) {
     this.status = 'out_of_stock';
-  } else if (this.status === 'out_of_stock' && this.quantity > 0) {
+  } else if (this.status === 'out_of_stock' && this.quantity > 0 && this.status !== 'sold') {
     this.status = 'active';
   }
   
@@ -329,7 +341,7 @@ inventorySchema.statics.findOutOfStock = function() {
 inventorySchema.statics.findByCategory = function(category) {
   return this.find({ 
     category: { $regex: category, $options: 'i' },
-    status: 'active'
+    status: { $ne: 'sold' }
   });
 };
 
@@ -337,7 +349,7 @@ inventorySchema.statics.findByCategory = function(category) {
 inventorySchema.statics.findByBrand = function(brand) {
   return this.find({ 
     brand: { $regex: brand, $options: 'i' },
-    status: 'active'
+    status: { $ne: 'sold' }
   });
 };
 
@@ -345,7 +357,7 @@ inventorySchema.statics.findByBrand = function(brand) {
 inventorySchema.statics.findCompatibleParts = function(brand, model, year) {
   return this.find({
     type: 'part',
-    status: 'active',
+    status: { $ne: 'sold' },
     $or: [
       {
         'compatibility.brand': { $regex: brand, $options: 'i' },

@@ -369,6 +369,7 @@ class InventoryService {
       if (filters.model) query.model = filters.model;
       if (filters.year) query.year = filters.year;
       if (filters.color) query.color = filters.color;
+      if (filters.interiorColor) query.interiorColor = filters.interiorColor;
       if (filters.type) query.type = filters.type;
       
       // Always filter for items in stock
@@ -396,13 +397,18 @@ class InventoryService {
         }
       }
       
-      // Convert prices efficiently
+      // Convert prices efficiently and filter vinNumber array
       const convertedItems = items.map(item => {
         const originalPrice = item.sellingPrice || 0;
         const convertedPrice = Math.round(originalPrice * exchangeRate * 100) / 100;
         
+        // Filter vinNumber array to only include active status items
+        const activeVinNumbers = item.vinNumber ? 
+          item.vinNumber.filter(vin => vin.status === 'active') : [];
+        
         return {
           ...item,
+          vinNumber: activeVinNumbers, // Only return active VIN numbers
           currencyType: currencyType.toUpperCase(),
           newSellingPrice: convertedPrice
         };
@@ -414,6 +420,7 @@ class InventoryService {
       const models = [...new Set(items.map(item => item.model).filter(Boolean))];
       const years = [...new Set(items.map(item => item.year).filter(Boolean))];
       const colors = [...new Set(items.map(item => item.color).filter(Boolean))];
+      const interiorColors = [...new Set(items.map(item => item.interiorColor).filter(Boolean))];
       
       // Calculate pagination info
       const totalPages = Math.ceil(totalItems / limit);
@@ -425,7 +432,8 @@ class InventoryService {
           brand: brands,
           model: models,
           year: years,
-          color: colors
+          color: colors,
+          interiorColor: interiorColors
         },
         pagination: {
           currentPage: page,

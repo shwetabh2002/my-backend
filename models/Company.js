@@ -274,6 +274,9 @@ const companySchema = new mongoose.Schema({
     trim: true,
     maxlength: 2000
   },
+  VAT:{
+    type:Number
+  },
   
   // Audit Fields
   createdBy: {
