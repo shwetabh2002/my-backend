@@ -104,12 +104,12 @@ quotationData.deliveryAddress = customer.address
         quotationNumber: quotationNumber,
         quotationId: quotationId,
       });
+      await this.updateInventoryForQuotation(quotationData.items);
 
       await quotation.save();
       console.log('Quotation saved successfully:', quotation.quotationId);
       
       // Update inventory based on quotation items
-      await this.updateInventoryForQuotation(quotationData.items);
 
       // Populate references
       await quotation.populate([
@@ -827,16 +827,22 @@ quotationData.deliveryAddress = customer.address
           continue;
         }
 
-        // console.log('Updating inventory for:', inventoryItem.name, 'itemId:', item.itemId);
-        // console.log('VIN numbers to update:', item.vinNumbers.map(vin => vin.chasisNumber));
+        console.log('Updating inventory for:', inventoryItem.name, 'itemId:', item.itemId);
+        console.log('VIN numbers to update:', item.vinNumbers.map(vin => vin.chasisNumber));
 
         // Calculate new quantity and VIN numbers to update
         const vinNumbersToUpdate = item.vinNumbers.map(vin => vin.chasisNumber);
         const quantityToReduce = item.vinNumbers.length;
         const newQuantity = Math.max(0, inventoryItem.quantity - quantityToReduce);
-        
+        const inStock = newQuantity > 0;
+        let status = 'active';
+        if(inStock){
+          status = 'active';
+        }else{
+          status = 'out_of_stock';
+        }
         // Update both VIN status and quantity in a single operation
-        await Inventory.updateOne(
+     const updatedInventory = await Inventory.updateOne(
           { 
             _id: item.itemId,
             'vinNumber.chasisNumber': { $in: vinNumbersToUpdate }
@@ -845,18 +851,19 @@ quotationData.deliveryAddress = customer.address
             $set: {
               'vinNumber.$[elem].status': 'hold',
               quantity: newQuantity,
-              inStock: newQuantity > 0
+              inStock: inStock,
+              status: status
             }
           },
           {
             arrayFilters: [{ 'elem.chasisNumber': { $in: vinNumbersToUpdate } }]
           }
         );
-
-        // console.log(`Updated inventory: ${inventoryItem.name} - Quantity: ${inventoryItem.quantity} → ${newQuantity}, VINs set to hold: ${quantityToReduce}`);
+        console.log('Updated inventory:', updatedInventory);
+        console.log(`Updated inventory: ${inventoryItem.name} - Quantity: ${inventoryItem.quantity} → ${newQuantity}, VINs set to hold: ${quantityToReduce}`);
       }
       
-      // console.log('Inventory update completed successfully');
+      console.log('Inventory update completed successfully');
     } catch (error) {
       console.error('Error updating inventory for quotation:', error);
       throw error;

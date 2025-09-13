@@ -223,6 +223,10 @@ const schemas = {
       'string.max': 'Category cannot exceed 100 characters',
       'any.required': 'Category is required'
     }),
+    subcategory: Joi.string().min(1).max(100).optional().messages({
+      'string.min': 'Subcategory must be at least 1 character long',
+      'string.max': 'Subcategory cannot exceed 100 characters'
+    }),
     brand: Joi.string().min(2).max(100).required().messages({
       'string.min': 'Brand must be at least 2 characters long',
       'string.max': 'Brand cannot exceed 100 characters',
@@ -241,12 +245,21 @@ const schemas = {
       'string.min': 'Color must be at least 1 character long',
       'string.max': 'Color cannot exceed 50 characters'
     }),
-    sku: Joi.string().min(3).max(50).optional().messages({
-      'string.min': 'SKU must be at least 3 characters long',
-      'string.max': 'SKU cannot exceed 50 characters'
+    interiorColor: Joi.string().min(1).max(50).optional().messages({
+      'string.min': 'Interior color must be at least 1 character long',
+      'string.max': 'Interior color cannot exceed 50 characters'
     }),
     description: Joi.string().max(1000).optional().messages({
       'string.max': 'Description cannot exceed 1000 characters'
+    }),
+    compatibility: Joi.array().items(Joi.object({
+      brand: Joi.string().min(1).max(100).optional(),
+      model: Joi.string().min(1).max(100).optional(),
+      yearFrom: Joi.number().integer().min(1900).optional(),
+      yearTo: Joi.number().integer().min(1900).optional(),
+      notes: Joi.string().max(200).optional()
+    })).optional().messages({
+      'array.base': 'Compatibility must be an array'
     }),
     costPrice: Joi.number().positive().required().messages({
       'number.positive': 'Cost price must be positive',
@@ -260,43 +273,33 @@ const schemas = {
       'number.integer': 'Quantity must be an integer',
       'number.min': 'Quantity cannot be negative'
     }),
-    location: Joi.string().max(100).optional().messages({
-      'string.max': 'Location cannot exceed 100 characters'
+    inStock: Joi.boolean().default(true).messages({
+      'boolean.base': 'inStock must be a boolean'
     }),
-    condition: Joi.string().valid('new', 'used', 'refurbished').default('new').messages({
-      'any.only': 'Condition must be new, used, or refurbished'
+    condition: Joi.string().valid('new', 'used', 'refurbished', 'damaged').default('new').messages({
+      'any.only': 'Condition must be new, used, refurbished, or damaged'
     }),
-    status: Joi.string().valid('active', 'inactive', 'discontinued').default('active').messages({
-      'any.only': 'Status must be active, inactive, or discontinued'
+    status: Joi.string().valid('active', 'inactive', 'discontinued', 'out_of_stock', 'sold', 'hold').default('active').messages({
+      'any.only': 'Status must be active, inactive, discontinued, out_of_stock, sold, or hold'
     }),
-    images: Joi.array().items(Joi.object({
-      url: Joi.string().uri().required().messages({
-        'string.uri': 'Image URL must be valid',
-        'any.required': 'Image URL is required'
+    vinNumber: Joi.array().items(Joi.object({
+      status: Joi.string().valid('active', 'inactive', 'hold', 'sold').default('active').messages({
+        'any.only': 'VIN status must be active, inactive, hold, or sold'
       }),
-      alt: Joi.string().max(100).optional().messages({
-        'string.max': 'Alt text cannot exceed 100 characters'
-      }),
-      caption: Joi.string().max(200).optional().messages({
-        'string.max': 'Caption cannot exceed 200 characters'
-      }),
-      isPrimary: Joi.boolean().default(false).messages({
-        'boolean.base': 'isPrimary must be a boolean'
+      chasisNumber: Joi.string().min(1).max(50).required().messages({
+        'string.min': 'Chassis number must be at least 1 character long',
+        'string.max': 'Chassis number cannot exceed 50 characters',
+        'any.required': 'Chassis number is required'
       })
     })).optional().messages({
-      'array.base': 'Images must be an array'
+      'array.base': 'VIN numbers must be an array'
     }),
     dimensions: Joi.object({
-      length: Joi.number().positive().optional(),
-      width: Joi.number().positive().optional(),
-      height: Joi.number().positive().optional(),
-      weight: Joi.number().positive().optional()
-    }).optional(),
-    tags: Joi.array().items(Joi.string().min(1).max(50)).optional().messages({
-      'array.base': 'Tags must be an array',
-      'string.min': 'Tag must be at least 1 character long',
-      'string.max': 'Tag cannot exceed 50 characters'
-    })
+      length: Joi.number().optional(),
+      width: Joi.number().optional(),
+      height: Joi.number().optional(),
+      weight: Joi.number().optional()
+    }).optional()
   }),
 
   updateInventory: Joi.object({
@@ -830,7 +833,7 @@ const schemas = {
         status: Joi.string().valid('active', 'inactive', 'hold', 'sold').default('active').messages({
           'any.only': 'VIN status must be active, inactive, hold, or sold'
         }),
-        chasisNumber: Joi.string().trim().uppercase().required().messages({
+        chasisNumber: Joi.string().trim().required().messages({
           'any.required': 'Chassis number is required for VIN'
         })
       })).optional(),
@@ -958,7 +961,7 @@ const schemas = {
         status: Joi.string().valid('active', 'inactive', 'hold', 'sold').default('active').messages({
           'any.only': 'VIN status must be active, inactive, hold, or sold'
         }),
-        chasisNumber: Joi.string().trim().uppercase().required().messages({
+        chasisNumber: Joi.string().trim().required().messages({
           'any.required': 'Chassis number is required for VIN'
         })
       })).optional(),

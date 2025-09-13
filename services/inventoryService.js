@@ -8,13 +8,19 @@ class InventoryService {
   // Create new inventory item
   async createInventory(inventoryData, currentUser) {
     try {
-      // Check if SKU already exists
-      if (inventoryData.sku) {
+      // Auto-generate SKU if not provided
+      if (!inventoryData.sku) {
+        inventoryData.sku = await this.generateSKU(inventoryData);
+      } else {
+        // Check if provided SKU already exists
         const existingItem = await Inventory.findOne({ sku: inventoryData.sku });
         if (existingItem) {
           throw createError.conflict('SKU already exists');
         }
       }
+
+      // Auto-generate tags from name and description
+      inventoryData.tags = this.generateTags(inventoryData);
 
       // Set audit fields
       inventoryData.createdBy = currentUser._id;
@@ -40,6 +46,73 @@ class InventoryService {
       
       throw error;
     }
+  }
+
+  // Generate SKU automatically
+  async generateSKU(inventoryData) {
+    const { type, brand, model, year } = inventoryData;
+    
+    // Create base SKU
+    let baseSKU = '';
+    
+    if (type === 'car') {
+      baseSKU = `CAR-${brand.toUpperCase()}`;
+      if (model) baseSKU += `-${model.toUpperCase()}`;
+      if (year) baseSKU += `-${year}`;
+    } else {
+      baseSKU = `PART-${brand.toUpperCase()}`;
+      if (model) baseSKU += `-${model.toUpperCase()}`;
+      if (year) baseSKU += `-${year}`;
+    }
+    
+    // Add sequence number to ensure uniqueness
+    let counter = 1;
+    let sku = `${baseSKU}-${counter.toString().padStart(3, '0')}`;
+    
+    // Check if SKU exists and increment counter
+    while (await Inventory.findOne({ sku })) {
+      counter++;
+      sku = `${baseSKU}-${counter.toString().padStart(3, '0')}`;
+    }
+    
+    return sku;
+  }
+
+  // Generate tags from name and description
+  generateTags(inventoryData) {
+    const { name, description, brand, category, subcategory, model, year, color } = inventoryData;
+    const tags = new Set();
+    
+    // Add brand and category as base tags
+    if (brand) tags.add(brand.toLowerCase());
+    if (category) tags.add(category.toLowerCase());
+    if (subcategory) tags.add(subcategory.toLowerCase());
+    
+    // Extract words from name
+    if (name) {
+      const nameWords = name.toLowerCase()
+        .replace(/[^\w\s]/g, ' ') // Remove special characters
+        .split(/\s+/)
+        .filter(word => word.length > 2); // Filter out short words
+      nameWords.forEach(word => tags.add(word));
+    }
+    
+    // Extract words from description
+    if (description) {
+      const descWords = description.toLowerCase()
+        .replace(/[^\w\s]/g, ' ') // Remove special characters
+        .split(/\s+/)
+        .filter(word => word.length > 2) // Filter out short words
+        .filter(word => !['the', 'and', 'for', 'with', 'from', 'this', 'that', 'are', 'was', 'were'].includes(word)); // Filter common words
+      descWords.forEach(word => tags.add(word));
+    }
+    
+    // Add specific fields as tags
+    if (model) tags.add(model.toLowerCase());
+    if (year) tags.add(year.toString());
+    if (color) tags.add(color.toLowerCase());
+    
+    return Array.from(tags).slice(0, 10); // Limit to 10 tags
   }
 
   // Get all inventory items with pagination and filters
@@ -542,6 +615,7 @@ class InventoryService {
         model,
         year,
         color,
+        interiorColor,
         condition,
         status,
         inStock,
@@ -573,16 +647,17 @@ class InventoryService {
         ];
       }
 
-      // Basic filters
-      if (type) query.type = type;
-      if (category) query.category = category;
-      if (subcategory) query.subcategory = subcategory;
-      if (brand) query.brand = brand;
-      if (model) query.model = model;
+      // Basic filters (case-insensitive for string fields)
+      if (type) query.type = { $regex: new RegExp(`^${type}$`, 'i') };
+      if (category) query.category = { $regex: new RegExp(`^${category}$`, 'i') };
+      if (subcategory) query.subcategory = { $regex: new RegExp(`^${subcategory}$`, 'i') };
+      if (brand) query.brand = { $regex: new RegExp(`^${brand}$`, 'i') };
+      if (model) query.model = { $regex: new RegExp(`^${model}$`, 'i') };
       if (year) query.year = year;
-      if (color) query.color = color;
-      if (condition) query.condition = condition;
-      if (status) query.status = status;
+      if (color) query.color = { $regex: new RegExp(`^${color}$`, 'i') };
+      if (interiorColor) query.interiorColor = { $regex: new RegExp(`^${interiorColor}$`, 'i') };
+      if (condition) query.condition = { $regex: new RegExp(`^${condition}$`, 'i') };
+      if (status) query.status = { $regex: new RegExp(`^${status}$`, 'i') };
       if (createdBy) query.createdBy = createdBy;
 
       // Boolean filters
@@ -672,17 +747,17 @@ class InventoryService {
         {
           $group: {
             _id: null,
-            types: { $addToSet: '$type' },
-            categories: { $addToSet: '$category' },
-            subcategories: { $addToSet: '$subcategory' },
-            brands: { $addToSet: '$brand' },
-            models: { $addToSet: '$model' },
+            types: { $addToSet: { $toLower: '$type' } },
+            categories: { $addToSet: { $toLower: '$category' } },
+            subcategories: { $addToSet: { $toLower: '$subcategory' } },
+            brands: { $addToSet: { $toLower: '$brand' } },
+            models: { $addToSet: { $toLower: '$model' } },
             years: { $addToSet: '$year' },
-            colors: { $addToSet: '$color' },
-            interiorColors: { $addToSet: '$interiorColor' },
-            conditions: { $addToSet: '$condition' },
-            statuses: { $addToSet: '$status' },
-            warehouses: { $addToSet: '$location.warehouse' },
+            colors: { $addToSet: { $toLower: '$color' } },
+            interiorColors: { $addToSet: { $toLower: '$interiorColor' } },
+            conditions: { $addToSet: { $toLower: '$condition' } },
+            statuses: { $addToSet: { $toLower: '$status' } },
+            warehouses: { $addToSet: { $toLower: '$location.warehouse' } },
             allTags: { $addToSet: '$tags' }
           }
         },
@@ -700,7 +775,18 @@ class InventoryService {
             conditions: { $filter: { input: '$conditions', cond: { $ne: ['$$this', null] } } },
             statuses: { $filter: { input: '$statuses', cond: { $ne: ['$$this', null] } } },
             warehouses: { $filter: { input: '$warehouses', cond: { $ne: ['$$this', null] } } },
-            allTags: { $reduce: { input: '$allTags', initialValue: [], in: { $setUnion: ['$$value', '$$this'] } } }
+            allTags: { 
+              $reduce: { 
+                input: '$allTags', 
+                initialValue: [], 
+                in: { 
+                  $setUnion: [
+                    '$$value', 
+                    { $map: { input: '$$this', as: 'tag', in: { $toLower: '$$tag' } } }
+                  ] 
+                } 
+              } 
+            }
           }
         }
       ];

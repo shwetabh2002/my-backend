@@ -98,8 +98,7 @@ const quotationItemSchema = new mongoose.Schema({
     },
     chasisNumber: {
       type: String,
-      trim: true,
-      uppercase: true
+      trim: true
     }
   }],
   interiorColor: {
