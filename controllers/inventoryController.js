@@ -316,6 +316,76 @@ class InventoryController {
       });
     }
   };
+
+  // Get inventory with comprehensive filtering
+  getInventory = async (req, res) => {
+    try {
+      const {
+        search,
+        type,
+        category,
+        subcategory,
+        brand,
+        model,
+        year,
+        color,
+        interiorColor,
+        condition,
+        status,
+        inStock,
+        minPrice,
+        maxPrice,
+        minQuantity,
+        maxQuantity,
+        createdBy,
+        sortBy = 'createdAt',
+        sortOrder = 'desc',
+        page = 1,
+        limit = 20
+      } = req.query;
+
+      const filters = {
+        search,
+        type,
+        category,
+        subcategory,
+        brand,
+        model,
+        year: year ? parseInt(year) : undefined,
+        color,
+        condition,
+        status,
+        inStock: inStock === 'true' ? true : inStock === 'false' ? false : undefined,
+        minPrice: minPrice ? parseFloat(minPrice) : undefined,
+        maxPrice: maxPrice ? parseFloat(maxPrice) : undefined,
+        minQuantity: minQuantity ? parseInt(minQuantity) : undefined,
+        maxQuantity: maxQuantity ? parseInt(maxQuantity) : undefined,
+        createdBy,
+        sortBy,
+        sortOrder
+      };
+
+      const options = {
+        page: parseInt(page),
+        limit: Math.min(parseInt(limit), 100) // Max 100 items per page
+      };
+
+      const result = await inventoryService.getInventory(filters, options);
+
+      res.status(200).json({
+        success: true,
+        message: 'Inventory retrieved successfully',
+        data: result
+      });
+    } catch (error) {
+      console.error('Get inventory error:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Internal server error',
+        statusCode: 500
+      });
+    }
+  };
 }
 
 module.exports = new InventoryController();

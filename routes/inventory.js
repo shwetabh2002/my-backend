@@ -24,7 +24,7 @@ router.post('/',
 
 router.get('/',
   canAccessResource('inventory', 'read'),
-  inventoryController.getInventoryItems
+  inventoryController.getInventory
 );
 
 // Get inventory requirements/categories (must come before :itemId route)
