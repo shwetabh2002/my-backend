@@ -40,19 +40,20 @@ const seedInventory = async () => {
         name: 'Toyota Camry 2023',
         type: 'car',
         category: 'Sedan',
+        subcategory: 'Mid-size',
         brand: 'Toyota',
-        sku: 'CAR-TOY-001',
+        model: 'Camry',
+        year: 2023,
+        color: 'Silver',
+        interiorColor: 'Black',
+        sku: 'CAR-TOYOTA-CAMRY-2023-001',
         description: '2023 Toyota Camry SE Sedan with excellent fuel economy and reliability',
         costPrice: 25000,
         sellingPrice: 28000,
         quantity: 5,
         inStock: true,
-        location: 'Main Showroom',
         condition: 'new',
         status: 'active',
-        model: 'Camry',
-        year: 2023,
-        color: 'Silver',
         vinNumber: [
           {
             status: 'active',
@@ -75,28 +76,12 @@ const seedInventory = async () => {
             chasisNumber: '1HGBH41JXMN109190'
           }
         ],
-        interiorColor: 'Black',
-        images: [
-          {
-            url: 'https://example.com/images/camry-front.jpg',
-            alt: 'Toyota Camry Front View',
-            caption: 'Front view of the 2023 Toyota Camry SE',
-            isPrimary: true
-          },
-          {
-            url: 'https://example.com/images/camry-side.jpg',
-            alt: 'Toyota Camry Side View',
-            caption: 'Side profile of the 2023 Toyota Camry SE',
-            isPrimary: false
-          }
-        ],
         dimensions: {
           length: 192.1,
           width: 72.4,
           height: 56.9,
           weight: 3310
         },
-        tags: ['sedan', 'fuel-efficient', 'reliable', 'family-car'],
         createdBy: adminUser._id,
         updatedBy: adminUser._id
       },
@@ -104,19 +89,20 @@ const seedInventory = async () => {
         name: 'Honda Civic 2023',
         type: 'car',
         category: 'Sedan',
+        subcategory: 'Compact',
         brand: 'Honda',
-        sku: 'CAR-HON-001',
+        model: 'Civic',
+        year: 2023,
+        color: 'White',
+        interiorColor: 'Gray',
+        sku: 'CAR-HONDA-CIVIC-2023-001',
         description: '2023 Honda Civic Sport with modern design and advanced features',
         costPrice: 23000,
         sellingPrice: 26000,
         quantity: 3,
         inStock: true,
-        location: 'Main Showroom',
         condition: 'new',
         status: 'active',
-        model: 'Civic',
-        year: 2023,
-        color: 'White',
         vinNumber: [
           {
             status: 'active',
@@ -131,28 +117,12 @@ const seedInventory = async () => {
             chasisNumber: '2HGBH41JXMN109190'
           }
         ],
-        interiorColor: 'Gray',
-        images: [
-          {
-            url: 'https://example.com/images/civic-front.jpg',
-            alt: 'Honda Civic Front View',
-            caption: 'Front view of the 2023 Honda Civic Sport',
-            isPrimary: true
-          },
-          {
-            url: 'https://example.com/images/civic-interior.jpg',
-            alt: 'Honda Civic Interior',
-            caption: 'Interior view of the 2023 Honda Civic Sport',
-            isPrimary: false
-          }
-        ],
         dimensions: {
           length: 184.0,
           width: 70.9,
           height: 55.7,
           weight: 2987
         },
-        tags: ['sedan', 'sport', 'modern', 'efficient'],
         createdBy: adminUser._id,
         updatedBy: adminUser._id
       },
@@ -160,19 +130,20 @@ const seedInventory = async () => {
         name: 'Ford F-150 2023',
         type: 'car',
         category: 'Truck',
+        subcategory: 'Full-size',
         brand: 'Ford',
-        sku: 'CAR-FOR-001',
+        model: 'F-150',
+        year: 2023,
+        color: 'Black',
+        interiorColor: 'Brown',
+        sku: 'CAR-FORD-F150-2023-001',
         description: '2023 Ford F-150 XLT with powerful engine and towing capacity',
         costPrice: 45000,
         sellingPrice: 52000,
         quantity: 2,
         inStock: true,
-        location: 'Truck Section',
         condition: 'new',
         status: 'active',
-        model: 'F-150',
-        year: 2023,
-        color: 'Black',
         vinNumber: [
           {
             status: 'active',
@@ -183,28 +154,12 @@ const seedInventory = async () => {
             chasisNumber: '3FGBH41JXMN109190'
           }
         ],
-        interiorColor: 'Brown',
-        images: [
-          {
-            url: 'https://example.com/images/f150-front.jpg',
-            alt: 'Ford F-150 Front View',
-            caption: 'Front view of the 2023 Ford F-150 XLT',
-            isPrimary: true
-          },
-          {
-            url: 'https://example.com/images/f150-bed.jpg',
-            alt: 'Ford F-150 Bed View',
-            caption: 'Bed view of the 2023 Ford F-150 XLT',
-            isPrimary: false
-          }
-        ],
         dimensions: {
           length: 232.9,
           width: 79.9,
           height: 77.2,
           weight: 4069
         },
-        tags: ['truck', 'powerful', 'towing', 'work-vehicle'],
         createdBy: adminUser._id,
         updatedBy: adminUser._id
       },
@@ -212,38 +167,24 @@ const seedInventory = async () => {
         name: 'BMW X5 2023',
         type: 'car',
         category: 'SUV',
+        subcategory: 'Luxury',
         brand: 'BMW',
-        sku: 'CAR-BMW-001',
+        model: 'X5',
+        year: 2023,
+        color: 'Blue',
+        interiorColor: 'Cream',
+        sku: 'CAR-BMW-X5-2023-001',
         description: '2023 BMW X5 xDrive40i with luxury features and performance',
         costPrice: 65000,
         sellingPrice: 75000,
         quantity: 1,
         inStock: true,
-        location: 'Luxury Section',
         condition: 'new',
         status: 'active',
-        model: 'X5',
-        year: 2023,
-        color: 'Blue',
         vinNumber: [
           {
             status: 'active',
             chasisNumber: '4FGBH41JXMN109190'
-          }
-        ],
-        interiorColor: 'Cream',
-        images: [
-          {
-            url: 'https://example.com/images/x5-front.jpg',
-            alt: 'BMW X5 Front View',
-            caption: 'Front view of the 2023 BMW X5 xDrive40i',
-            isPrimary: true
-          },
-          {
-            url: 'https://example.com/images/x5-interior.jpg',
-            alt: 'BMW X5 Interior',
-            caption: 'Luxury interior of the 2023 BMW X5 xDrive40i',
-            isPrimary: false
           }
         ],
         dimensions: {
@@ -252,14 +193,27 @@ const seedInventory = async () => {
           height: 69.0,
           weight: 4856
         },
-        tags: ['suv', 'luxury', 'performance', 'premium'],
         createdBy: adminUser._id,
         updatedBy: adminUser._id
       },
       {
         name: 'Tesla Model 3 2024',
         type: 'car',
+        category: 'Electric',
+        subcategory: 'Sedan',
+        brand: 'Tesla',
+        model: 'Model 3',
+        year: 2024,
         color: 'Red',
+        interiorColor: 'White',
+        sku: 'CAR-TESLA-MODEL3-2024-001',
+        description: '2024 Tesla Model 3 with autopilot and long range',
+        costPrice: 35000,
+        sellingPrice: 42000,
+        quantity: 3,
+        inStock: true,
+        condition: 'new',
+        status: 'active',
         vinNumber: [
           {
             status: 'active',
@@ -274,40 +228,33 @@ const seedInventory = async () => {
             chasisNumber: '5FGBH41JXMN109193'
           }
         ],
-        interiorColor: 'White',
-        category: 'Electric',
-        brand: 'Tesla',
-        sku: 'CAR-TES-001',
-        description: '2024 Tesla Model 3 with autopilot and long range',
-        costPrice: 35000,
-        sellingPrice: 42000,
-        quantity: 3,
-        inStock: true,
-        location: 'Electric Showroom',
-        condition: 'new',
-        status: 'active',
-        model: 'Model 3',
-        year: 2024,
-        images: [
-          {
-            url: 'https://example.com/images/tesla-front.jpg',
-            alt: 'Tesla Model 3 Front View',
-            caption: 'Front view of the 2024 Tesla Model 3',
-            isPrimary: true
-          }
-        ],
         dimensions: {
           length: 184.8,
           width: 72.8,
           height: 56.8,
           weight: 1844
         },
-        tags: ['electric', 'autopilot', 'luxury', 'sustainable'],
         createdBy: adminUser._id,
         updatedBy: adminUser._id
       },
       {
+        name: 'Honda Accord 2024',
+        type: 'car',
+        category: 'Sedan',
+        subcategory: 'Mid-size',
+        brand: 'Honda',
+        model: 'Accord',
+        year: 2024,
         color: 'Red',
+        interiorColor: 'Black',
+        sku: 'CAR-HONDA-ACCORD-2024-001',
+        description: '2024 Honda Accord Sport with hybrid powertrain',
+        costPrice: 28000,
+        sellingPrice: 32000,
+        quantity: 4,
+        inStock: true,
+        condition: 'new',
+        status: 'active',
         vinNumber: [
           {
             status: 'active',
@@ -326,37 +273,12 @@ const seedInventory = async () => {
             chasisNumber: '6FGBH41JXMN109195'
           }
         ],
-        interiorColor: 'Black',
-        name: 'Honda Accord 2024',
-        type: 'car',
-        category: 'Sedan',
-        brand: 'Honda',
-        sku: 'CAR-HON-002',
-        description: '2024 Honda Accord Sport with hybrid powertrain',
-        costPrice: 28000,
-        sellingPrice: 32000,
-        quantity: 4,
-        inStock: true,
-        location: 'Main Showroom',
-        condition: 'new',
-        status: 'active',
-        model: 'Accord',
-        year: 2024,
-        images: [
-          {
-            url: 'https://example.com/images/accord-front.jpg',
-            alt: 'Honda Accord Front View',
-            caption: 'Front view of the 2024 Honda Accord Sport',
-            isPrimary: true
-          }
-        ],
         dimensions: {
           length: 195.9,
           width: 73.3,
           height: 57.1,
           weight: 3150
         },
-        tags: ['sedan', 'hybrid', 'efficient', 'family-car'],
         createdBy: adminUser._id,
         updatedBy: adminUser._id
       },
@@ -366,23 +288,32 @@ const seedInventory = async () => {
         name: 'Oil Filter - Toyota Compatible',
         type: 'part',
         category: 'Filters',
+        subcategory: 'Oil Filter',
         brand: 'Toyota Genuine',
-        sku: 'PART-FIL-001',
+        model: 'Camry',
+        year: 2023,
+        sku: 'PART-TOYOTA-OILFILTER-2023-001',
         description: 'High-quality oil filter compatible with Toyota engines',
         costPrice: 8.50,
         sellingPrice: 12.99,
         quantity: 50,
         inStock: true,
-        location: 'Parts Warehouse A',
         condition: 'new',
         status: 'active',
-        color: 'Red',
-        images: [
+        compatibility: [
           {
-            url: 'https://example.com/images/oil-filter.jpg',
-            alt: 'Toyota Oil Filter',
-            caption: 'High-quality oil filter for Toyota engines',
-            isPrimary: true
+            brand: 'Toyota',
+            model: 'Camry',
+            yearFrom: 2020,
+            yearTo: 2025,
+            notes: 'Compatible with all Camry models 2020-2025'
+          },
+          {
+            brand: 'Toyota',
+            model: 'Corolla',
+            yearFrom: 2020,
+            yearTo: 2024,
+            notes: 'Also compatible with Corolla models'
           }
         ],
         dimensions: {
@@ -391,32 +322,38 @@ const seedInventory = async () => {
           height: 2.8,
           weight: 0.3
         },
-        tags: ['filter', 'oil', 'toyota', 'maintenance'],
         createdBy: adminUser._id,
         updatedBy: adminUser._id
       },
       {
-        color: 'Red',
         name: 'Brake Pads - Front Set',
         type: 'part',
         category: 'Brakes',
+        subcategory: 'Brake Pads',
         brand: 'Brembo',
-        sku: 'PART-BRA-001',
+        model: 'Universal',
+        sku: 'PART-BREMBO-BRAKEPADS-001',
         description: 'Premium brake pads for front wheels, fits most sedans',
         costPrice: 45.00,
         sellingPrice: 89.99,
         quantity: 25,
         inStock: true,
-        location: 'Parts Warehouse A',
         condition: 'new',
         status: 'active',
-        color: 'Red',
-        images: [
+        compatibility: [
           {
-            url: 'https://example.com/images/brake-pads.jpg',
-            alt: 'Brembo Brake Pads',
-            caption: 'Premium brake pads for front wheels',
-            isPrimary: true
+            brand: 'Toyota',
+            model: 'Camry',
+            yearFrom: 2020,
+            yearTo: 2025,
+            notes: 'Fits Toyota Camry 2020-2025'
+          },
+          {
+            brand: 'Honda',
+            model: 'Civic',
+            yearFrom: 2020,
+            yearTo: 2024,
+            notes: 'Fits Honda Civic 2020-2024'
           }
         ],
         dimensions: {
@@ -425,7 +362,6 @@ const seedInventory = async () => {
           height: 0.8,
           weight: 1.2
         },
-        tags: ['brakes', 'pads', 'front', 'premium'],
         createdBy: adminUser._id,
         updatedBy: adminUser._id
       },
@@ -433,23 +369,31 @@ const seedInventory = async () => {
         name: 'Air Filter - Universal',
         type: 'part',
         category: 'Filters',
+        subcategory: 'Air Filter',
         brand: 'K&N',
-        sku: 'PART-FIL-002',
+        model: 'Universal',
+        sku: 'PART-KN-AIRFILTER-001',
         description: 'High-performance air filter for improved engine breathing',
         costPrice: 35.00,
         sellingPrice: 69.99,
         quantity: 30,
         inStock: true,
-        location: 'Parts Warehouse B',
         condition: 'new',
         status: 'active',
-        color: 'Red',
-        images: [
+        compatibility: [
           {
-            url: 'https://example.com/images/air-filter.jpg',
-            alt: 'K&N Air Filter',
-            caption: 'High-performance air filter for improved engine breathing',
-            isPrimary: true
+            brand: 'Toyota',
+            model: 'Camry',
+            yearFrom: 2020,
+            yearTo: 2025,
+            notes: 'Universal fit for most sedans'
+          },
+          {
+            brand: 'Honda',
+            model: 'Civic',
+            yearFrom: 2020,
+            yearTo: 2024,
+            notes: 'Universal fit for most sedans'
           }
         ],
         dimensions: {
@@ -458,7 +402,6 @@ const seedInventory = async () => {
           height: 2.0,
           weight: 0.8
         },
-        tags: ['filter', 'air', 'performance', 'universal'],
         createdBy: adminUser._id,
         updatedBy: adminUser._id
       },
@@ -466,23 +409,31 @@ const seedInventory = async () => {
         name: 'Spark Plugs - Iridium Set',
         type: 'part',
         category: 'Ignition',
+        subcategory: 'Spark Plugs',
         brand: 'NGK',
-        sku: 'PART-IGN-001',
+        model: 'Iridium',
+        sku: 'PART-NGK-SPARKPLUGS-001',
         description: 'Iridium spark plugs for better ignition and fuel efficiency',
         costPrice: 12.00,
         sellingPrice: 24.99,
         quantity: 100,
         inStock: true,
-        location: 'Parts Warehouse B',
         condition: 'new',
         status: 'active',
-        color: 'Red',
-        images: [
+        compatibility: [
           {
-            url: 'https://example.com/images/spark-plugs.jpg',
-            alt: 'NGK Iridium Spark Plugs',
-            caption: 'Iridium spark plugs for better ignition and fuel efficiency',
-            isPrimary: true
+            brand: 'Toyota',
+            model: 'Camry',
+            yearFrom: 2020,
+            yearTo: 2025,
+            notes: 'Iridium spark plugs for Toyota engines'
+          },
+          {
+            brand: 'Honda',
+            model: 'Civic',
+            yearFrom: 2020,
+            yearTo: 2024,
+            notes: 'Iridium spark plugs for Honda engines'
           }
         ],
         dimensions: {
@@ -491,7 +442,6 @@ const seedInventory = async () => {
           height: 0.5,
           weight: 0.1
         },
-        tags: ['spark-plugs', 'iridium', 'ignition', 'efficiency'],
         createdBy: adminUser._id,
         updatedBy: adminUser._id
       },
@@ -499,23 +449,31 @@ const seedInventory = async () => {
         name: 'Windshield Wiper Blades',
         type: 'part',
         category: 'Exterior',
+        subcategory: 'Wiper Blades',
         brand: 'Bosch',
-        sku: 'PART-EXT-001',
+        model: 'Universal',
+        sku: 'PART-BOSCH-WIPERBLADES-001',
         description: 'Premium windshield wiper blades for all weather conditions',
         costPrice: 15.00,
         sellingPrice: 29.99,
         quantity: 75,
         inStock: true,
-        location: 'Parts Warehouse B',
         condition: 'new',
         status: 'active',
-        color: 'Red',
-        images: [
+        compatibility: [
           {
-            url: 'https://example.com/images/wiper-blades.jpg',
-            alt: 'Bosch Wiper Blades',
-            caption: 'Premium windshield wiper blades for all weather conditions',
-            isPrimary: true
+            brand: 'Toyota',
+            model: 'Camry',
+            yearFrom: 2020,
+            yearTo: 2025,
+            notes: 'Universal fit for most vehicles'
+          },
+          {
+            brand: 'Honda',
+            model: 'Civic',
+            yearFrom: 2020,
+            yearTo: 2024,
+            notes: 'Universal fit for most vehicles'
           }
         ],
         dimensions: {
@@ -524,7 +482,6 @@ const seedInventory = async () => {
           height: 0.5,
           weight: 0.4
         },
-        tags: ['wipers', 'windshield', 'exterior', 'weather'],
         createdBy: adminUser._id,
         updatedBy: adminUser._id
       }

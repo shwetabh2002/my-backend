@@ -136,8 +136,7 @@ const seedSampleUsers = async (employeeRole, customerRole) => {
         type: 'employee',
         status: 'active',
         roleIds: [employeeRole._id],
-        address: '123 Main St, Anytown, USA',
-        phone: '+1-555-0123'
+        address: '123 Main St, Anytown, USA'
       },
       {
         name: 'Jane Customer',
@@ -146,8 +145,7 @@ const seedSampleUsers = async (employeeRole, customerRole) => {
         type: 'customer',
         status: 'active',
         roleIds: [customerRole._id],
-        address: '123 Main St, Anytown, USA',
-        phone: '+1-555-0456'
+        address: '123 Main St, Anytown, USA'
       }
     ];
 

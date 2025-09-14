@@ -103,7 +103,7 @@ const seedOwnerCompany = async () => {
       notes: 'This is your company that sells products to customers',
       internalNotes: 'Owner company - used for invoices, quotations, and business documents',
       createdBy: adminUser._id,
-      termCondition: "  ksjefwed ewkc ewkfnewalfnewlDKewkc wedfnewlkfdmewcm wekcewlfinew ",
+      termCondition: "Payment terms: Net 30 days. Delivery within 5-7 business days. All sales are final. Returns accepted within 7 days of purchase with original receipt.",
       VAT:10
     });
 
