@@ -371,7 +371,7 @@ const schemas = {
       'any.only': 'Status must be active, inactive, discontinued, out_of_stock, sold, or hold'
     }),
     vinNumber: Joi.array().items(Joi.object({
-      status: Joi.string().valid('active').messages({
+      status: Joi.string().messages({
         'any.only': 'Only active VIN numbers can be edited'
       }),
       chasisNumber: Joi.string().min(1).max(50).required().messages({

@@ -105,6 +105,10 @@ const inventorySchema = new mongoose.Schema({
     {
       status:{
         type:String,
+        enum: {
+          values: ['active', 'inactive', 'discontinued', 'out_of_stock','sold','hold'],
+          message: 'Status must be active, inactive, discontinued, sold,hold or out_of_stock'
+        },
       },
       chasisNumber:{
         type:String,
