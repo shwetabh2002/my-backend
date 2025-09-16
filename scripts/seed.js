@@ -145,6 +145,7 @@ const seedSampleUsers = async (employeeRole, customerRole) => {
         countryCode: '+1',
         email: 'jane.customer@example.com',
         phone: '+1-555-0456',
+        custId: 'CUS-001',
         type: 'customer',
         status: 'active',
         roleIds: [customerRole._id],
