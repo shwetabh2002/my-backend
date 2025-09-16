@@ -99,6 +99,7 @@ const seedAdminUser = async (adminRole) => {
 
     const adminUser = new User({
       name: 'System Administrator',
+      countryCode: '+1',
       email: 'admin@example.com',
       password: 'admin123',
       type: 'admin',
@@ -130,6 +131,7 @@ const seedSampleUsers = async (employeeRole, customerRole) => {
     const sampleUsers = [
       {
         name: 'John Employee',
+        countryCode: '+1',
         email: 'john.employee@example.com',
         phone: '+1-555-0123',
         password: 'employee123',
@@ -140,6 +142,7 @@ const seedSampleUsers = async (employeeRole, customerRole) => {
       },
       {
         name: 'Jane Customer',
+        countryCode: '+1',
         email: 'jane.customer@example.com',
         phone: '+1-555-0456',
         type: 'customer',

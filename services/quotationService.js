@@ -47,7 +47,8 @@ quotationData.termsAndConditions=company.termCondition;
         name: customer.name,
         email: customer.email,
         phone: customer.phone || customer.phone,
-        address: customer.address || "no address"
+        address: customer.address || "no address",
+        countryCode: customer.countryCode || "+971"
       };
 quotationData.deliveryAddress = customer.address 
       // Calculate line totals for each item

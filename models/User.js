@@ -8,6 +8,15 @@ const userSchema = new mongoose.Schema({
     trim: true,
     maxlength: [100, 'Name cannot exceed 100 characters']
   },
+  countryCode: {
+    type: String,
+    required: [true, 'Country code is required'],
+    trim: true,
+    match: [
+      /^\+\d{1,3}$/,
+      'Country code must start with + followed by 1-3 digits'
+    ]
+  },
   email: {
     type: String,
     required: [true, 'Email is required'],

@@ -2,6 +2,8 @@ const User = require('../models/User');
 const Role = require('../models/Role');
 const { getPaginationOptions, createPaginationResponse } = require('../utils/pagination');
 const { createError } = require('../utils/apiError');
+const Quotation = require('../models/quotation');
+
 
 class UserService {
   // Create new user
@@ -366,9 +368,36 @@ class UserService {
     }
   }
   async getCustomerById(customerId) {
-    const customer = await User.findById(customerId);
+    const customer = await User.findOne({_id:customerId,type:'customer'});
+    if (!customer) {
+      return null;
+    }
+    // Remove sensitive data
     delete customer.password;
     delete customer.refreshToken;
+    
+    // Get quotation data for this customer
+    const quotations = await Quotation.find({ 'customer.userId': customerId })
+      .select('quotationId quotationNumber status currency validTill createdAt')
+      .populate('createdBy', 'name email')
+      .sort('-createdAt')
+      .lean();
+    
+    // Calculate quotation statistics
+    const quotationStats = {
+      total: quotations.length,
+      byStatus: quotations.reduce((acc, quote) => {
+        acc[quote.status] = (acc[quote.status] || 0) + 1;
+        return acc;
+      }, {})
+    };
+    
+    // Add quotation data to customer response
+    customer.quotations = {
+      data: quotations,
+      statistics: quotationStats
+    };
+    
     return customer;
   }
 }

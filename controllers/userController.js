@@ -224,7 +224,22 @@ class UserController {
       res.status(200).json({
         success: true,
         message: 'Customer retrieved successfully',
-        data: customer
+        data: {
+          customer: {
+            _id: customer._id,
+            custId: customer.custId,
+            name: customer.name,
+            email: customer.email,
+            phone: customer.phone,
+            address: customer.address,
+            type: customer.type,
+            isActive: customer.isActive,
+            createdAt: customer.createdAt,
+            updatedAt: customer.updatedAt,
+            countryCode: customer.countryCode
+          },
+          quotations: customer.quotations
+        }
       });
     } catch (error) {
       console.error('Get customer by ID error:', error);
