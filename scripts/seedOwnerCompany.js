@@ -78,9 +78,7 @@ const seedOwnerCompany = async () => {
           isPrimary: true
         }
       ],
-      annualRevenue: 1000000, // Replace with your actual revenue
       currency: 'AED',
-      creditLimit: 0, // Not applicable for owner company
       paymentTerms: 'Due on Receipt', // Your payment terms
       bankDetails: {
         bankName: 'COMMERCIAL BANK OF DUBAI',
@@ -111,7 +109,7 @@ const seedOwnerCompany = async () => {
           validity: "3 working days from the date of issue"
         }
       },
-      VAT:10
+      VAT:5
     });
 
     await ownerCompany.save();
