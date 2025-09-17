@@ -181,7 +181,7 @@ quotationData.deliveryAddress = customer.address
    * @param {Object} options - Query options (page, limit, sort, etc.)
    * @returns {Promise<Object>} Paginated quotations
    */
-  async getQuotations(filters = {}, options = {}) {
+  async getQuotations(filters , options ) {
     try {
       const {
         page = 1,
@@ -237,7 +237,7 @@ quotationData.deliveryAddress = customer.address
         .populate('createdBy', 'name email')
         .populate('updatedBy', 'name email')
         .populate('customer.userId', 'name email')
-        .populate('items.inventoryId', 'name sku sellingPrice')
+        .populate('items.itemId', 'name sku sellingPrice')
         .sort(sort)
         .skip(skip)
         .limit(limitNum)
@@ -273,13 +273,23 @@ quotationData.deliveryAddress = customer.address
         .populate('createdBy', 'name email')
         .populate('updatedBy', 'name email')
         .populate('customer.userId', 'name email')
-        .populate('items.inventoryId', 'name sku sellingPrice description');
+        .populate('items.itemId', 'name sku sellingPrice description');
 
       if (!quotation) {
         throw createError.notFound('Quotation not found');
       }
 
-      return quotation;
+      // Fetch company data and add to response
+      const company = await Company.findOne();
+      // console.log('Company:', company);
+      
+      // Convert quotation to plain object and add company
+      const quotationObj = quotation.toObject();
+      if (company) {
+        quotationObj.company = company;
+      }
+
+      return quotationObj;
     } catch (error) {
       if (error.name === 'CastError') {
         throw createError.badRequest('Invalid quotation ID format');
@@ -299,7 +309,7 @@ quotationData.deliveryAddress = customer.address
         .populate('createdBy', 'name email')
         .populate('updatedBy', 'name email')
         .populate('customer.userId', 'name email')
-        .populate('items.inventoryId', 'name sku sellingPrice description');
+        .populate('items.itemId', 'name sku sellingPrice description');
 
       if (!quotation) {
         throw createError.notFound('Quotation not found');
@@ -322,7 +332,7 @@ quotationData.deliveryAddress = customer.address
     try {
       // Validate inventory items if being updated
       if (updateData.items && updateData.items.length > 0) {
-        const inventoryIds = updateData.items.map(item => item.inventoryId);
+        const inventoryIds = updateData.items.map(item => item.itemId);
         const inventoryItems = await Inventory.find({ _id: { $in: inventoryIds } });
 
         if (inventoryItems.length !== inventoryIds.length) {
@@ -331,7 +341,7 @@ quotationData.deliveryAddress = customer.address
 
         // Update items with current inventory data
         updateData.items = updateData.items.map(item => {
-          const inventoryItem = inventoryItems.find(inv => inv._id.toString() === item.inventoryId.toString());
+          const inventoryItem = inventoryItems.find(inv => inv._id.toString() === item.itemId.toString());
           return {
             ...item,
             name: inventoryItem.name,
@@ -356,7 +366,7 @@ quotationData.deliveryAddress = customer.address
       ).populate('createdBy', 'name email')
        .populate('updatedBy', 'name email')
        .populate('customer.userId', 'name email')
-       .populate('items.inventoryId', 'name sku sellingPrice');
+       .populate('items.itemId', 'name sku sellingPrice');
 
       if (!quotation) {
         throw createError.notFound('Quotation not found');
@@ -572,7 +582,7 @@ quotationData.deliveryAddress = customer.address
 
       const quotations = await Quotation.findByCustomer(customerId)
         .populate('createdBy', 'name email')
-        .populate('items.inventoryId', 'name sku sellingPrice')
+        .populate('items.itemId', 'name sku sellingPrice')
         .limit(parseInt(limit))
         .sort('-createdAt')
         .lean();
@@ -596,7 +606,7 @@ quotationData.deliveryAddress = customer.address
       const quotations = await Quotation.findByStatus(status)
         .populate('createdBy', 'name email')
         .populate('customer.userId', 'name email')
-        .populate('items.inventoryId', 'name sku sellingPrice')
+        .populate('items.itemId', 'name sku sellingPrice')
         .limit(parseInt(limit))
         .sort('-createdAt')
         .lean();
@@ -665,7 +675,7 @@ quotationData.deliveryAddress = customer.address
       })
         .populate('createdBy', 'name email')
         .populate('customer.userId', 'name email')
-        .populate('items.inventoryId', 'name sku sellingPrice')
+        .populate('items.itemId', 'name sku sellingPrice')
         .limit(parseInt(limit))
         .sort('-createdAt')
         .lean();
@@ -763,7 +773,7 @@ quotationData.deliveryAddress = customer.address
       await duplicate.populate([
         { path: 'createdBy', select: 'name email' },
         { path: 'customer.userId', select: 'name email' },
-        { path: 'items.inventoryId', select: 'name sku sellingPrice' }
+        { path: 'items.itemId', select: 'name sku sellingPrice' }
       ]);
 
       return duplicate;

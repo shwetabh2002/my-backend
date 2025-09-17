@@ -222,7 +222,7 @@ class InventoryService {
 
         // Always process VIN numbers to convert them to plain objects
         item.vinNumber = item.vinNumber.map(vin => {
-          console.log('Processing VIN:', vin.chasisNumber, 'Status:', vin.status);
+          // console.log('Processing VIN:', vin.chasisNumber, 'Status:', vin.status);
           
           if (vin.status === 'hold' && quotations.length > 0) {
             // Find the quotation that contains this chassis number
@@ -232,10 +232,10 @@ class InventoryService {
               )
             );
             
-            console.log('Quotation found for VIN:', vin.chasisNumber, 'Quotation:', quotation ? 'YES' : 'NO');
+            // console.log('Quotation found for VIN:', vin.chasisNumber, 'Quotation:', quotation ? 'YES' : 'NO');
             
             if (quotation) {
-              console.log('Adding quotation to VIN:', vin.chasisNumber);
+              // console.log('Adding quotation to VIN:', vin.chasisNumber);
               const vinWithQuotation = {
                 status: vin.status,
                 chasisNumber: vin.chasisNumber,
@@ -248,7 +248,7 @@ class InventoryService {
                   customerName: quotation.customer?.name
                 }
               };
-              console.log('VIN with quotation:', JSON.stringify(vinWithQuotation, null, 2));
+              // console.log('VIN with quotation:', JSON.stringify(vinWithQuotation, null, 2));
               return vinWithQuotation;
             }
           }
@@ -261,7 +261,7 @@ class InventoryService {
           };
         });
         
-        console.log('Final VIN numbers after mapping:', JSON.stringify(item.vinNumber, null, 2));
+        // console.log('Final VIN numbers after mapping:', JSON.stringify(item.vinNumber, null, 2));
       }
 
       return item;

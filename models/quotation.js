@@ -182,8 +182,8 @@ const quotationSchema = new mongoose.Schema({
     required: true,
     index: true
   },
-  statusHistory: [
-    {
+  statusHistory: {
+    type: [{
       status: {
         type: String,
         enum: ['draft', 'sent', 'viewed', 'accepted', 'rejected', 'expired', 'converted'],
@@ -193,8 +193,9 @@ const quotationSchema = new mongoose.Schema({
         type: Date,
         default: Date.now,
       },
-    }
-  ],
+    }],
+    _id: false
+  },
   
   // Items
   items: [quotationItemSchema],

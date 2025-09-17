@@ -207,6 +207,35 @@ const companySchema = new mongoose.Schema({
     type: String,
   },
   
+  // Bank Details
+  bankDetails: {
+    bankName: {
+      type: String,
+      trim: true,
+      maxlength: 200
+    },
+    accountName: {
+      type: String,
+      trim: true,
+      maxlength: 200
+    },
+    accountNumber: {
+      type: String,
+      trim: true,
+      maxlength: 50
+    },
+    iban: {
+      type: String,
+      trim: true,
+      maxlength: 50
+    },
+    swiftCode: {
+      type: String,
+      trim: true,
+      maxlength: 20
+    }
+  },
+  
   // Status and Classification
   status: {
     type: String,
@@ -295,8 +324,25 @@ const companySchema = new mongoose.Schema({
     type: Date,
     default: Date.now
   },
-  termCondition:{
-    type:String
+  termCondition: {
+    export: {
+      price: {
+        type: String,
+        trim: true
+      },
+      delivery: {
+        type: String,
+        trim: true
+      },
+      payment: {
+        type: String,
+        trim: true
+      },
+      validity: {
+        type: String,
+        trim: true
+      }
+    }
   },
 
 }, {

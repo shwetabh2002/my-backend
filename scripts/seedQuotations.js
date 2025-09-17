@@ -63,6 +63,10 @@ const seedQuotations = async () => {
         },
         validTill: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days from now
         status: 'draft',
+        statusHistory: [{
+          status: 'draft',
+          date: new Date()
+        }],
         items: [
           {
             itemId: inventoryItems[0]._id,
@@ -118,6 +122,10 @@ const seedQuotations = async () => {
         },
         validTill: new Date(Date.now() + 15 * 24 * 60 * 60 * 1000), // 15 days from now
         status: 'sent',
+        statusHistory: [{
+          status: 'sent',
+          date: new Date()
+        }],
         items: [
           {
             itemId: inventoryItems[1]._id,
@@ -152,6 +160,10 @@ const seedQuotations = async () => {
             interiorColor: inventoryItems[1].interiorColor
           }
         ],
+        statusHistory: [{
+          status: 'sent',
+          date: new Date()
+        }],
         totalDiscount: 1000,
         VAT: 5,
         currency: 'AED',
