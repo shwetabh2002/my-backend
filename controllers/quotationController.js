@@ -50,6 +50,7 @@ const getQuotations = async (req, res) => {
       status: req.query.status,
       customerId: req.query.customerId,
       createdBy: req.query.createdBy,
+      currency: req.query.currency,
       dateFrom: req.query.dateFrom,
       dateTo: req.query.dateTo,
       validTillFrom: req.query.validTillFrom,
@@ -62,7 +63,8 @@ const getQuotations = async (req, res) => {
       success: true,
       message: 'Quotations retrieved successfully',
       data: result.quotations,
-      pagination: result.pagination
+      pagination: result.pagination,
+      summary: result.summary
     });
   } catch (error) {
     res.status(error.statusCode || 500).json({

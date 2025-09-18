@@ -104,7 +104,6 @@ const seedQuotations = async () => {
         exchangeRate: 1,
         vatAmount: inventoryItems[0].sellingPrice * 0.05, // Add vatAmount
         totalAmount: inventoryItems[0].sellingPrice * 1.05, // Including 5% VAT
-        termsAndConditions: 'Payment terms: Net 30 days. Delivery within 5-7 business days.',
         notes: 'Sample quotation for testing purposes',
         deliveryAddress: '123 Customer Street, Dubai, UAE',
         createdBy: adminUser._id
@@ -171,7 +170,6 @@ const seedQuotations = async () => {
         subtotal: inventoryItems[1].sellingPrice * 2,
         vatAmount: (inventoryItems[1].sellingPrice * 2 - 1000) * 0.05,
         totalAmount: (inventoryItems[1].sellingPrice * 2 - 1000) * 1.05,
-        termsAndConditions: 'Payment terms: Net 30 days. Delivery within 5-7 business days.',
         notes: 'Bulk order with discount applied',
         deliveryAddress: '456 Business Avenue, Dubai, UAE',
         createdBy: adminUser._id

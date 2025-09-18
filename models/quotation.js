@@ -199,7 +199,29 @@ const quotationSchema = new mongoose.Schema({
   
   // Items
   items: [quotationItemSchema],
-  
+
+  // Additional Expenses
+  additionalExpenses: {
+    expenceType:{
+      type: String,
+      enum: ['shipping', 'accessories', 'Rta Fees',"COO Fees","Customs","Insurance","Other","none"],
+      required: false
+    },
+    description:{
+      type: String,
+      required: false
+    },
+    amount:{
+      type: Number,
+      required: false,
+      default: 0
+    },
+    currency:{
+      type: String,
+      required: false,
+      default: 'AED'
+    }
+  },
   // Pricing
   subtotal: {
     type: Number,
@@ -236,11 +258,6 @@ const quotationSchema = new mongoose.Schema({
     default: 'AED'
   },
   // Terms and Conditions
-  termsAndConditions: {
-    type: String,
-    trim: true,
-    maxlength: 2000
-  },
   notes: {
     type: String,
     trim: true,

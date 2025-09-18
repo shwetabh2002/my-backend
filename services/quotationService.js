@@ -38,8 +38,8 @@ class QuotationService {
       }
 
       console.log('Customer found:', customer.name);
-const company = await Company.findOne();
-quotationData.termsAndConditions=company.termCondition;
+// const company = await Company.findOne();
+// quotationData.termsAndConditions=company.termCondition;
       // Set customer information from user data
       quotationData.customer = {
         userId: customer._id,
@@ -68,6 +68,18 @@ quotationData.deliveryAddress = customer.address
       // Calculate subtotal
       quotationData.subtotal = quotationData.items.reduce((total, item) => total + item.totalPrice, 0);
 
+      // Set currency for additional expenses from root level currency
+      if (quotationData?.additionalExpenses) {
+        quotationData.additionalExpenses.currency = quotationData.currency || 'AED';
+        // Ensure amount is set to 0 if not provided
+        if (!quotationData.additionalExpenses.amount) {
+          quotationData.additionalExpenses.amount = 0;
+        }
+      }
+
+      // Calculate additional expenses amount
+      const additionalExpensesAmount = quotationData.additionalExpenses ? (quotationData.additionalExpenses.amount || 0) : 0;
+
       // Map discount to totalDiscount and calculate
       const discountValue = quotationData.discount || 0;
       if (discountValue > 0) {
@@ -84,13 +96,13 @@ quotationData.deliveryAddress = customer.address
         quotationData.totalDiscount = 0;
       }
 
-      // Calculate vat amount
-      const taxableAmount = quotationData.subtotal - quotationData.totalDiscount;
+      // Calculate vat amount (on subtotal + additional expenses - discount)
+      const taxableAmount = quotationData.subtotal + additionalExpensesAmount - quotationData.totalDiscount;
       // console.log('Calculated taxable amount:', taxableAmount);
       quotationData.vatAmount = quotationData.VAT ? (taxableAmount * quotationData.VAT) / 100 : 0;
       // console.log('Calculated vat amount:', quotationData.vatAmount);
 
-      // Calculate total amount
+      // Calculate total amount (subtotal + additional expenses - discount + vat)
       quotationData.totalAmount = taxableAmount + quotationData.vatAmount;
       // console.log('Calculated total amount:', quotationData.totalAmount);
       // console.log('Calculated totals - Subtotal:', quotationData.subtotal, 'Total:', quotationData.totalAmount);
@@ -105,6 +117,8 @@ quotationData.deliveryAddress = customer.address
         quotationNumber: quotationNumber,
         quotationId: quotationId,
       });
+      
+      
       await this.updateInventoryForQuotation(quotationData.items);
 
       await quotation.save();
@@ -125,7 +139,7 @@ quotationData.deliveryAddress = customer.address
         error: error.message,
         stack: error.stack,
         customerId: quotationData.customer?.custId,
-        createdBy
+        createdBy,
       });
 
       if (error.name === 'ValidationError') {
@@ -191,6 +205,7 @@ quotationData.deliveryAddress = customer.address
         status,
         customerId,
         createdBy,
+        currency,
         dateFrom,
         dateTo,
         validTillFrom,
@@ -203,6 +218,7 @@ quotationData.deliveryAddress = customer.address
       if (status) query.status = status;
       if (customerId) query['customer.custId'] = customerId;
       if (createdBy) query.createdBy = createdBy;
+      if (currency) query.currency = currency;
 
       // Date range filters
       if (dateFrom || dateTo) {
@@ -246,7 +262,49 @@ quotationData.deliveryAddress = customer.address
       // Get total count for pagination
       const total = await Quotation.countDocuments(query);
 
-      return {
+      // Get summary data for dynamic filters
+      const summaryData = await Quotation.aggregate([
+        { $match: {} }, // Match all quotations for summary
+        {
+          $lookup: {
+            from: 'users',
+            localField: 'createdBy',
+            foreignField: '_id',
+            as: 'creatorInfo'
+          }
+        },
+        {
+          $group: {
+            _id: null,
+            totalQuotations: { $sum: 1 },
+            statuses: { $addToSet: '$status' },
+            currencies: { $addToSet: '$currency' },
+            customers: { $addToSet: '$customer.custId' },
+            creators: { 
+              $addToSet: { $arrayElemAt: ['$creatorInfo.name', 0] }
+            },
+            // Date ranges
+            minCreatedDate: { $min: '$createdAt' },
+            maxCreatedDate: { $max: '$createdAt' },
+            minValidTillDate: { $min: '$validTill' },
+            maxValidTillDate: { $max: '$validTill' }
+          }
+        }
+      ]);
+
+      const summary = summaryData[0] || {
+        totalQuotations: 0,
+        statuses: [],
+        currencies: [],
+        customers: [],
+        creators: [],
+        minCreatedDate: null,
+        maxCreatedDate: null,
+        minValidTillDate: null,
+        maxValidTillDate: null
+      };
+
+      const result = {
         quotations,
         pagination: {
           page: parseInt(page),
@@ -255,11 +313,116 @@ quotationData.deliveryAddress = customer.address
           pages: Math.ceil(total / limitNum),
           hasNext: page < Math.ceil(total / limitNum),
           hasPrev: page > 1
+        },
+        summary: {
+          appliedFilters: {
+            search: search || null,
+            status: status || null,
+            customerId: customerId || null,
+            createdBy: createdBy || null,
+            currency: currency || null,
+            dateFrom: dateFrom || null,
+            dateTo: dateTo || null,
+            validTillFrom: validTillFrom || null,
+            validTillTo: validTillTo || null
+          },
+          availableFilters: {
+            // Basic filters
+            statuses: summary.statuses ? summary.statuses.sort() : [],
+            currencies: summary.currencies ? summary.currencies.sort() : [],
+            customers: summary.customers ? summary.customers.sort() : [],
+            creators: summary.creators ? summary.creators.sort() : [],
+            
+            // Date ranges for date pickers
+            dateRanges: {
+              created: {
+                min: summary.minCreatedDate,
+                max: summary.maxCreatedDate
+              },
+              validTill: {
+                min: summary.minValidTillDate,
+                max: summary.maxValidTillDate
+              }
+            },
+            
+            // Counts for each filter option
+            counts: {
+              totalQuotations: summary.totalQuotations || 0
+            },
+            
+            // Sort options
+            sortOptions: [
+              { value: '-createdAt', label: 'Newest First' },
+              { value: 'createdAt', label: 'Oldest First' },
+              { value: '-updatedAt', label: 'Recently Updated' },
+              { value: 'updatedAt', label: 'Least Recently Updated' },
+              { value: '-totalAmount', label: 'Highest Amount' },
+              { value: 'totalAmount', label: 'Lowest Amount' },
+              { value: 'quotationNumber', label: 'Quotation Number A-Z' },
+              { value: '-quotationNumber', label: 'Quotation Number Z-A' }
+            ],
+            
+            // Pagination options
+            pageSizes: [5, 10, 25, 50, 100]
+          },
+          sortBy: sort,
+          totalResults: total,
+          showingResults: `${quotations.length} of ${total} quotations`
         }
       };
+
+      return result;
     } catch (error) {
       throw createError.internal('Failed to fetch quotations');
     }
+  }
+
+  /**
+   * Get status counts for filter summary
+   * @returns {Promise<Array>} Status counts
+   */
+  async getStatusCounts() {
+    const counts = await Quotation.aggregate([
+      { $group: { _id: '$status', count: { $sum: 1 } } },
+      { $sort: { _id: 1 } }
+    ]);
+    return counts.map(item => ({ value: item._id, count: item.count }));
+  }
+
+  /**
+   * Get currency counts for filter summary
+   * @returns {Promise<Array>} Currency counts
+   */
+  async getCurrencyCounts() {
+    const counts = await Quotation.aggregate([
+      { $group: { _id: '$currency', count: { $sum: 1 } } },
+      { $sort: { _id: 1 } }
+    ]);
+    return counts.map(item => ({ value: item._id, count: item.count }));
+  }
+
+  /**
+   * Get customer counts for filter summary
+   * @returns {Promise<Array>} Customer counts
+   */
+  async getCustomerCounts() {
+    const counts = await Quotation.aggregate([
+      { $group: { _id: '$customer.custId', count: { $sum: 1 } } },
+      { $sort: { _id: 1 } }
+    ]);
+    return counts.map(item => ({ value: item._id, count: item.count }));
+  }
+
+  /**
+   * Get creator counts for filter summary
+   * @returns {Promise<Array>} Creator counts
+   */
+  async getCreatorCounts() {
+    const counts = await Quotation.aggregate([
+      { $group: { _id: '$createdBy', count: { $sum: 1 } } },
+      { $sort: { _id: 1 } }
+    ]);
+    return counts.map(item => ({ value: item._id, count: item.count }));
   }
 
   /**

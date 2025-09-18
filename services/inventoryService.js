@@ -197,24 +197,24 @@ class InventoryService {
 
       // Get quotation information for VIN numbers with 'hold' status
       if (item.vinNumber && item.vinNumber.length > 0) {
-        console.log('Total VIN numbers:', item.vinNumber.length);
-        console.log('All VIN numbers:', item.vinNumber);
+        // console.log('Total VIN numbers:', item.vinNumber.length);
+        // console.log('All VIN numbers:', item.vinNumber);
         
         const holdVinNumbers = item.vinNumber.filter(vin => vin.status === 'hold');
-        console.log('Hold VIN numbers found:', holdVinNumbers.length);
-        console.log('Hold VIN numbers:', holdVinNumbers);
+        // console.log('Hold VIN numbers found:', holdVinNumbers.length);
+        // console.log('Hold VIN numbers:', holdVinNumbers);
         
         let quotations = [];
         if (holdVinNumbers.length > 0) {
           const chassisNumbers = holdVinNumbers.map(vin => vin.chasisNumber);
-          console.log('Chassis numbers to search:', chassisNumbers);
+          // console.log('Chassis numbers to search:', chassisNumbers);
           
           // Since chassis numbers are unique, we can directly find quotations by chassis number
           quotations = await Quotation.find({
             'items.vinNumbers.chasisNumber': { $in: chassisNumbers },
           }).select('quotationId quotationNumber status createdAt customer.name items.vinNumbers');
 
-          console.log('Found quotations:', quotations.length);
+          // console.log('Found quotations:', quotations.length);
           if (quotations.length > 0) {
             console.log('Sample quotation structure:', JSON.stringify(quotations[0], null, 2));
           }
