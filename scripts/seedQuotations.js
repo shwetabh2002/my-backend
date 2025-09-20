@@ -30,6 +30,7 @@ const seedQuotations = async () => {
 
     // Get some inventory items
     const inventoryItems = await Inventory.find({ type: 'car' }).limit(3);
+    const inventoryItemsWithSupplier = await Inventory.find({ type: 'car', supplierId: { $exists: true, $ne: null } }).limit(3);
     if (inventoryItems.length === 0) {
       console.log('No inventory items found. Please run inventory seed first.');
       return;
@@ -127,36 +128,37 @@ const seedQuotations = async () => {
         }],
         items: [
           {
-            itemId: inventoryItems[1]._id,
-            name: inventoryItems[1].name,
-            type: inventoryItems[1].type,
-            category: inventoryItems[1].category,
-            subcategory: inventoryItems[1].subcategory,
-            brand: inventoryItems[1].brand,
-            model: inventoryItems[1].model,
-            year: inventoryItems[1].year,
-            color: inventoryItems[1].color,
-            sku: inventoryItems[1].sku,
-            description: inventoryItems[1].description,
-            costPrice: inventoryItems[1].costPrice,
-            sellingPrice: inventoryItems[1].sellingPrice,
-            condition: inventoryItems[1].condition,
-            status: inventoryItems[1].status,
-            dimensions: inventoryItems[1].dimensions,
+            itemId: inventoryItemsWithSupplier[1]._id,
+            supplierId: inventoryItemsWithSupplier[1].supplierId,
+            name: inventoryItemsWithSupplier[1].name,
+            type: inventoryItemsWithSupplier[1].type,
+            category: inventoryItemsWithSupplier[1].category,
+            subcategory: inventoryItemsWithSupplier[1].subcategory,
+            brand: inventoryItemsWithSupplier[1].brand,
+            model: inventoryItemsWithSupplier[1].model,
+            year: inventoryItemsWithSupplier[1].year,
+            color: inventoryItemsWithSupplier[1].color,
+            sku: inventoryItemsWithSupplier[1].sku,
+            description: inventoryItemsWithSupplier[1].description,
+            costPrice: inventoryItemsWithSupplier[1].costPrice,
+            sellingPrice: inventoryItemsWithSupplier[1].sellingPrice,
+            condition: inventoryItemsWithSupplier[1].condition,
+            status: inventoryItemsWithSupplier[1].status,
+            dimensions: inventoryItemsWithSupplier[1].dimensions,
             quantity: 2,
-            unitPrice: inventoryItems[1].sellingPrice,
-            totalPrice: inventoryItems[1].sellingPrice * 2,
+            unitPrice: inventoryItemsWithSupplier[1].sellingPrice,
+            totalPrice: inventoryItemsWithSupplier[1].sellingPrice * 2,
             vinNumbers: [
               {
                 status: 'hold',
-                chasisNumber: inventoryItems[1].vinNumber[0].chasisNumber
+                chasisNumber: inventoryItemsWithSupplier[1].vinNumber[0].chasisNumber
               },
               {
                 status: 'hold',
-                chasisNumber: inventoryItems[1].vinNumber[1].chasisNumber
+                chasisNumber: inventoryItemsWithSupplier[1].vinNumber[1].chasisNumber
               }
             ],
-            interiorColor: inventoryItems[1].interiorColor
+            interiorColor: inventoryItemsWithSupplier[1].interiorColor
           }
         ],
         statusHistory: [{
@@ -167,9 +169,9 @@ const seedQuotations = async () => {
         VAT: 5,
         currency: 'AED',
         exchangeRate: 1,
-        subtotal: inventoryItems[1].sellingPrice * 2,
-        vatAmount: (inventoryItems[1].sellingPrice * 2 - 1000) * 0.05,
-        totalAmount: (inventoryItems[1].sellingPrice * 2 - 1000) * 1.05,
+        subtotal: inventoryItemsWithSupplier[1].sellingPrice * 2,
+        vatAmount: (inventoryItemsWithSupplier[1].sellingPrice * 2 - 1000) * 0.05,
+        totalAmount: (inventoryItemsWithSupplier[1].sellingPrice * 2 - 1000) * 1.05,
         notes: 'Bulk order with discount applied',
         deliveryAddress: '456 Business Avenue, Dubai, UAE',
         createdBy: adminUser._id

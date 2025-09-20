@@ -254,7 +254,7 @@ quotationData.deliveryAddress = customer.address
         .populate('createdBy', 'name email')
         .populate('updatedBy', 'name email')
         .populate('customer.userId', 'name email')
-        .populate('items.itemId', 'name sku sellingPrice')
+        .populate('items.supplierId', 'name email custId')
         .sort(sort)
         .skip(skip)
         .limit(limitNum)
@@ -437,7 +437,7 @@ quotationData.deliveryAddress = customer.address
         .populate('createdBy', 'name email')
         .populate('updatedBy', 'name email')
         .populate('customer.userId', 'name email')
-        .populate('items.itemId', 'name sku sellingPrice description');
+        .populate('items.supplierId', 'name email custId')
 
       if (!quotation) {
         throw createError.notFound('Quotation not found');
@@ -473,7 +473,15 @@ quotationData.deliveryAddress = customer.address
         .populate('createdBy', 'name email')
         .populate('updatedBy', 'name email')
         .populate('customer.userId', 'name email')
-        .populate('items.itemId', 'name sku sellingPrice description');
+        .populate({
+          path: 'items.itemId',
+          select: 'name sku sellingPrice description supplierId',
+          populate: {
+            path: 'supplierId',
+            select: 'name email custId',
+            model: 'User'
+          }
+        });
 
       if (!quotation) {
         throw createError.notFound('Quotation not found');
@@ -530,7 +538,15 @@ quotationData.deliveryAddress = customer.address
       ).populate('createdBy', 'name email')
        .populate('updatedBy', 'name email')
        .populate('customer.userId', 'name email')
-       .populate('items.itemId', 'name sku sellingPrice');
+       .populate({
+         path: 'items.itemId',
+         select: 'name sku sellingPrice supplierId',
+         populate: {
+           path: 'supplierId',
+           select: 'name email custId',
+           model: 'User'
+         }
+       });
 
       if (!quotation) {
         throw createError.notFound('Quotation not found');
@@ -746,7 +762,15 @@ quotationData.deliveryAddress = customer.address
 
       const quotations = await Quotation.findByCustomer(customerId)
         .populate('createdBy', 'name email')
-        .populate('items.itemId', 'name sku sellingPrice')
+        .populate({
+          path: 'items.itemId',
+          select: 'name sku sellingPrice supplierId',
+          populate: {
+            path: 'supplierId',
+            select: 'name email custId',
+            model: 'User'
+          }
+        })
         .limit(parseInt(limit))
         .sort('-createdAt')
         .lean();
@@ -770,7 +794,15 @@ quotationData.deliveryAddress = customer.address
       const quotations = await Quotation.findByStatus(status)
         .populate('createdBy', 'name email')
         .populate('customer.userId', 'name email')
-        .populate('items.itemId', 'name sku sellingPrice')
+        .populate({
+          path: 'items.itemId',
+          select: 'name sku sellingPrice supplierId',
+          populate: {
+            path: 'supplierId',
+            select: 'name email custId',
+            model: 'User'
+          }
+        })
         .limit(parseInt(limit))
         .sort('-createdAt')
         .lean();
@@ -839,7 +871,15 @@ quotationData.deliveryAddress = customer.address
       })
         .populate('createdBy', 'name email')
         .populate('customer.userId', 'name email')
-        .populate('items.itemId', 'name sku sellingPrice')
+        .populate({
+          path: 'items.itemId',
+          select: 'name sku sellingPrice supplierId',
+          populate: {
+            path: 'supplierId',
+            select: 'name email custId',
+            model: 'User'
+          }
+        })
         .limit(parseInt(limit))
         .sort('-createdAt')
         .lean();

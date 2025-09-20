@@ -9,6 +9,10 @@ const quotationItemSchema = new mongoose.Schema({
     ref: 'Inventory',
     required: true
   },
+  supplierId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+  },
   name: {
     type: String,
     required: true,

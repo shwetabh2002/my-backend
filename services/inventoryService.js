@@ -29,9 +29,10 @@ class InventoryService {
       // Create inventory item
       const inventory = await Inventory.create(inventoryData);
       
-      // Populate creator and updater info
+      // Populate creator, updater, and supplier info
       await inventory.populate('createdBy', 'name email');
       await inventory.populate('updatedBy', 'name email');
+      await inventory.populate('supplierId', 'name email custId');
 
       return inventory;
     } catch (error) {
@@ -172,6 +173,7 @@ class InventoryService {
         Inventory.find(query)
           .populate('createdBy', 'name email')
           .populate('updatedBy', 'name email')
+          .populate('supplierId', 'name email custId')
           .sort(sortOptions)
           .skip(skip)
           .limit(limit),
@@ -189,7 +191,9 @@ class InventoryService {
     try {
       const item = await Inventory.findById(itemId)
         .populate('createdBy', 'name email')
-        .populate('updatedBy', 'name email').lean();
+        .populate('updatedBy', 'name email')
+        .populate('supplierId', 'name email custId')
+        .lean();
 
       if (!item) {
         throw createError.notFound('Inventory item not found');
@@ -303,7 +307,8 @@ class InventoryService {
         updateData,
         { new: true, runValidators: true }
       ).populate('createdBy', 'name email')
-       .populate('updatedBy', 'name email');
+       .populate('updatedBy', 'name email')
+       .populate('supplierId', 'name email custId');
 
       return updatedItem;
     } catch (error) {
@@ -382,7 +387,8 @@ class InventoryService {
         },
         { new: true }
       ).populate('createdBy', 'name email')
-       .populate('updatedBy', 'name email');
+       .populate('updatedBy', 'name email')
+       .populate('supplierId', 'name email custId');
 
       return updatedItem;
     } catch (error) {
@@ -703,6 +709,7 @@ class InventoryService {
       const items = await Inventory.find(query)
         .populate('createdBy', 'name email')
         .populate('updatedBy', 'name email')
+        .populate('supplierId', 'name email custId')
         .sort(sort)
         .skip(skip)
         .limit(limit)

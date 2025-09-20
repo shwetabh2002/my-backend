@@ -328,6 +328,10 @@ const schemas = {
       'number.positive': 'Cost price must be positive',
       'any.required': 'Cost price is required'
     }),
+    supplierId: Joi.string().hex().length(24).optional().messages({
+      'string.hex': 'Supplier ID must be a valid ObjectId',
+      'string.length': 'Supplier ID must be 24 characters long'
+    }),
     sellingPrice: Joi.number().positive().required().messages({
       'number.positive': 'Selling price must be positive',
       'any.required': 'Selling price is required'
@@ -376,6 +380,10 @@ const schemas = {
     category: Joi.string().min(2).max(100).messages({
       'string.min': 'Category must be at least 2 characters long',
       'string.max': 'Category cannot exceed 100 characters'
+    }),
+    supplierId: Joi.string().hex().length(24).optional().messages({
+      'string.hex': 'Supplier ID must be a valid ObjectId',
+      'string.length': 'Supplier ID must be 24 characters long'
     }),
     subcategory: Joi.string().min(1).max(100).messages({
       'string.min': 'Subcategory must be at least 1 character long',
@@ -832,6 +840,11 @@ const schemas = {
       itemId: Joi.string().hex().length(24).required().messages({
         'any.required': 'Item ID is required'
       }),
+      supplierId: Joi.string().hex().length(24).optional().messages({
+        'any.required': 'Supplier ID is required',
+        'string.hex': 'Supplier ID must be a valid ObjectId',
+        'string.length': 'Supplier ID must be 24 characters long'
+      }),
       name: Joi.string().trim().max(200).required().messages({
         'string.max': 'Product name cannot exceed 200 characters',
         'any.required': 'Product name is required'
@@ -982,6 +995,11 @@ const schemas = {
     }),
     items: Joi.array().items(Joi.object({
       // Inventory fields (flat structure)
+      supplierId: Joi.string().hex().length(24).optional().messages({
+        'any.required': 'Supplier ID is required',
+        'string.hex': 'Supplier ID must be a valid ObjectId',
+        'string.length': 'Supplier ID must be 24 characters long'
+      }),
       name: Joi.string().trim().max(200).required().messages({
         'string.max': 'Product name cannot exceed 200 characters',
         'any.required': 'Product name is required'
