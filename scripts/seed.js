@@ -75,6 +75,11 @@ const seedRoles = async () => {
         name: 'CUSTOMER',
         permissions: [],
         description: 'Customer role with no system access'
+      },
+      {
+        name: 'SUPPLIER',
+        permissions: [],
+        description: 'Supplier role with no system access'
       }
     ];
 
@@ -119,7 +124,7 @@ const seedAdminUser = async (adminRole) => {
   }
 };
 
-const seedSampleUsers = async (employeeRole, customerRole) => {
+const seedSampleUsers = async (employeeRole, customerRole, supplierRole) => {
   try {
     // Check if sample users already exist
     const existingUsers = await User.countDocuments({ email: { $regex: /sample/ } });
@@ -150,6 +155,28 @@ const seedSampleUsers = async (employeeRole, customerRole) => {
         status: 'active',
         roleIds: [customerRole._id],
         address: '123 Main St, Anytown, USA'
+      },
+      {
+        name: 'Auto Parts Supplier',
+        countryCode: '+971',
+        email: 'supplier1@autoparts.com',
+        phone: '+971-50-1234567',
+        custId: 'SUP-001',
+        type: 'supplier',
+        status: 'active',
+        roleIds: [supplierRole._id],
+        address: 'Dubai Industrial City, UAE'
+      },
+      {
+        name: 'Car Accessories Ltd',
+        countryCode: '+971',
+        email: 'supplier2@accessories.com',
+        phone: '+971-50-7654321',
+        custId: 'SUP-002',
+        type: 'supplier',
+        status: 'active',
+        roleIds: [supplierRole._id],
+        address: 'Sharjah Industrial Area, UAE'
       }
     ];
 
@@ -176,12 +203,13 @@ const runSeed = async () => {
     const adminRole = roles.find(r => r.name === 'ADMIN');
     const employeeRole = roles.find(r => r.name === 'EMPLOYEE');
     const customerRole = roles.find(r => r.name === 'CUSTOMER');
+    const supplierRole = roles.find(r => r.name === 'SUPPLIER');
     
     // Seed admin user
     await seedAdminUser(adminRole);
     
     // Seed sample users
-    await seedSampleUsers(employeeRole, customerRole);
+    await seedSampleUsers(employeeRole, customerRole, supplierRole);
     
     console.log('Database seeding completed successfully!');
     console.log('\nDefault credentials:');

@@ -44,13 +44,13 @@ const userSchema = new mongoose.Schema({
     sparse: true, // Only create index if field exists
     trim: true,
     uppercase: true,
-    match: [/^CUS-\d{3}$/, 'Customer ID must be in format CUS-XXX']
+    match: [/^(CUS|SUP)-\d{3}$/, 'ID must be in format CUS-XXX or SUP-XXX']
   },
   password: {
     type: String,
     required: function() {
-      // Password is only required for employees and admins, not for customers
-      return this.type !== 'customer';
+      // Password is only required for employees and admins, not for customers or suppliers
+      return this.type !== 'customer' && this.type !== 'supplier';
     },
     minlength: [6, 'Password must be at least 6 characters'],
     select: false // Don't include password in queries by default
@@ -59,8 +59,8 @@ const userSchema = new mongoose.Schema({
     type: String,
     required: [true, 'User type is required'],
     enum: {
-      values: ['employee', 'admin', 'customer'],
-      message: 'User type must be employee, admin, or customer'
+      values: ['employee', 'admin', 'customer', 'supplier'],
+      message: 'User type must be employee, admin, customer, or supplier'
     }
   },
   status: {
@@ -121,25 +121,27 @@ userSchema.pre('save', async function(next) {
   }
 });
 
-// Pre-save middleware to generate custId for customers
+// Pre-save middleware to generate custId for customers and suppliers
 userSchema.pre('save', async function(next) {
-  if (this.isNew && this.type === 'customer' && !this.custId) {
+  if (this.isNew && (this.type === 'customer' || this.type === 'supplier') && !this.custId) {
     try {
-      // Find the highest existing customer ID
-      const lastCustomer = await this.constructor.findOne(
-        { type: 'customer', custId: { $exists: true } },
+      const prefix = this.type === 'customer' ? 'CUS' : 'SUP';
+      
+      // Find the highest existing ID for this type
+      const lastUser = await this.constructor.findOne(
+        { type: this.type, custId: { $regex: `^${prefix}-` } },
         { custId: 1 },
         { sort: { custId: -1 } }
       );
       
       let nextNumber = 1;
-      if (lastCustomer && lastCustomer.custId) {
-        const lastNumber = parseInt(lastCustomer.custId.split('-')[1]);
+      if (lastUser && lastUser.custId) {
+        const lastNumber = parseInt(lastUser.custId.split('-')[1]);
         nextNumber = lastNumber + 1;
       }
       
-      // Generate new customer ID with zero-padded number
-      this.custId = `CUS-${nextNumber.toString().padStart(3, '0')}`;
+      // Generate new ID with zero-padded number
+      this.custId = `${prefix}-${nextNumber.toString().padStart(3, '0')}`;
       next();
     } catch (error) {
       next(error);
@@ -153,15 +155,23 @@ userSchema.pre('save', async function(next) {
 userSchema.pre('save', async function(next) {
   if (this.isNew || this.isModified('type') || this.isModified('roleIds')) {
     try {
-      // Validate that customer users don't have login capabilities
-      if (this.type === 'customer') {
+      // Validate that customer and supplier users don't have login capabilities
+      if (this.type === 'customer' || this.type === 'supplier') {
         const Role = mongoose.model('Role');
-        const customerRole = await Role.findOne({ name: 'CUSTOMER' });
-        if (!customerRole) {
-          throw new Error('Customer role not found');
+        const userRole = await Role.findOne({ name: this.type.toUpperCase() });
+        if (!userRole) {
+          // Create the role if it doesn't exist
+          const newRole = new Role({
+            name: this.type.toUpperCase(),
+            permissions: [],
+            description: `${this.type} role with no system access`
+          });
+          await newRole.save();
+          this.roleIds = [newRole._id];
+        } else {
+          // Ensure customer/supplier only has their respective role
+          this.roleIds = [userRole._id];
         }
-        // Ensure customer only has customer role
-        this.roleIds = [customerRole._id];
       }
       next();
     } catch (error) {

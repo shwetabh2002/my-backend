@@ -133,10 +133,61 @@ const schemas = {
     password: Joi.string().optional()
   }),
 
+  // Supplier creation schema (no password, auto-assigned type and role)
+  createSupplier: Joi.object({
+    name: Joi.string().min(2).max(100).required().messages({
+      'string.min': 'Name must be at least 2 characters long',
+      'string.max': 'Name cannot exceed 100 characters',
+      'any.required': 'Name is required'
+    }),
+    email: Joi.string().email().required().messages({
+      'string.email': 'Please provide a valid email address',
+      'any.required': 'Email is required'
+    }),
+    phone: Joi.string().pattern(/^\+?[\d\s\-\(\)]+$/).min(10).max(15).required().messages({
+      'string.pattern.base': 'Please provide a valid phone number',
+      'string.min': 'Phone number must be at least 10 characters',
+      'string.max': 'Phone number cannot exceed 15 characters',
+      'any.required': 'Phone is required'
+    }),
+    countryCode: Joi.string().pattern(/^\+\d{1,3}$/).required().messages({
+      'string.pattern.base': 'Country code must start with + followed by 1-3 digits (e.g., +1, +971, +44)',
+      'any.required': 'Country code is required'
+    }),
+    address: Joi.string().max(200).messages({
+      'string.max': 'Address cannot exceed 200 characters'
+    }) 
+  }),
+
+  // Supplier update schema
+  updateSupplier: Joi.object({
+    name: Joi.string().min(2).max(100).messages({
+      'string.min': 'Name must be at least 2 characters long',
+      'string.max': 'Name cannot exceed 100 characters'
+    }),
+    email: Joi.string().email().messages({
+      'string.email': 'Please provide a valid email address'
+    }),
+    phone: Joi.string().pattern(/^\+?[\d\s\-\(\)]+$/).min(10).max(15).messages({
+      'string.pattern.base': 'Please provide a valid phone number',
+      'string.min': 'Phone number must be at least 10 characters',
+      'string.max': 'Phone number cannot exceed 15 characters'
+    }),
+    countryCode: Joi.string().pattern(/^\+\d{1,3}$/).messages({
+      'string.pattern.base': 'Country code must start with + followed by 1-3 digits (e.g., +1, +971, +44)'
+    }),
+    address: Joi.string().max(200).messages({
+      'string.max': 'Address cannot exceed 200 characters'
+    }),
+    status: Joi.string().valid('active', 'inactive', 'suspended').messages({
+      'any.only': 'Status must be active, inactive, or suspended'
+    })
+  }).min(1), // At least one field must be provided
+
   // Role schemas
   createRole: Joi.object({
-    name: Joi.string().valid('ADMIN', 'EMPLOYEE', 'CUSTOMER').required().messages({
-      'any.only': 'Role name must be ADMIN, EMPLOYEE, or CUSTOMER',
+    name: Joi.string().valid('ADMIN', 'EMPLOYEE', 'CUSTOMER', 'SUPPLIER').required().messages({
+      'any.only': 'Role name must be ADMIN, EMPLOYEE, CUSTOMER, or SUPPLIER',
       'any.required': 'Role name is required'
     }),
     permissions: Joi.array().items(Joi.string().valid(

@@ -400,6 +400,230 @@ class UserService {
     
     return customer;
   }
+
+  // Create supplier
+  async createSupplier(userData) {
+    try {
+      // Check if email already exists
+      const existingSupplier = await User.findOne({ $or: [{ email: userData.email }, { phone: userData.phone }] });
+      if (existingSupplier) {
+        throw createError.conflict('Supplier with this email or phone already exists');
+      }
+
+      // Auto-assign supplier type and status
+      const supplierData = {
+        ...userData,
+        type: 'supplier',
+        status: 'active'
+      };
+
+      // Ensure no password is set for suppliers
+      delete supplierData.password;
+
+      // Create supplier
+      const supplier = await User.create(supplierData);
+      
+      // Return supplier without sensitive fields
+      const supplierResponse = supplier.toObject();
+      delete supplierResponse.password;
+      delete supplierResponse.refreshToken;
+
+      return supplierResponse;
+    } catch (error) {
+      // Re-throw ApiError instances as-is
+      if (error.statusCode) {
+        throw error;
+      }
+      
+      // Handle Mongoose validation errors
+      if (error.name === 'ValidationError') {
+        const validationErrors = Object.values(error.errors).map(err => err.message);
+        throw createError.badRequest(`Validation failed: ${validationErrors.join(', ')}`);
+      }
+      
+      // Handle duplicate key errors
+      if (error.code === 11000) {
+        if (error.keyPattern.email) {
+          throw createError.conflict('Email already exists');
+        }
+        if (error.keyPattern.phone) {
+          throw createError.conflict('Phone number already exists');
+        }
+        if (error.keyPattern.custId) {
+          throw createError.conflict('Supplier ID already exists');
+        }
+        throw createError.conflict('Duplicate field value');
+      }
+      
+      // Handle role-related errors
+      if (error.message && error.message.includes('role not found')) {
+        throw createError.internal('System error: Required role not found. Please contact administrator.');
+      }
+      
+      // Re-throw other errors as internal server error
+      throw createError.internal('Failed to create supplier');
+    }
+  }
+
+  // Get suppliers with pagination and filters
+  async getSuppliers(options = {}) {
+    try {
+      const { page = 1, limit = 10, search, status } = options;
+      
+      // Build query
+      const query = { type: 'supplier' };
+      
+      // Add status filter if provided
+      if (status) {
+        query.status = status;
+      } else {
+        // Default to active suppliers if no status specified
+        query.status = 'active';
+      }
+      
+      // Add search filter if provided
+      if (search) {
+        query.$or = [
+          { name: { $regex: search, $options: 'i' } },
+          { email: { $regex: search, $options: 'i' } },
+          { phone: { $regex: search, $options: 'i' } }
+        ];
+      }
+      
+      // Calculate pagination
+      const skip = (page - 1) * limit;
+      
+      // Get total count for pagination
+      const totalSuppliers = await User.countDocuments(query);
+      
+      // Get suppliers with pagination
+      const suppliers = await User.find(query)
+        .select('-password -refreshToken -roleIds')
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(parseInt(limit));
+      
+      // Calculate pagination info
+      const totalPages = Math.ceil(totalSuppliers / limit);
+      
+      return {
+        suppliers,
+        pagination: {
+          currentPage: parseInt(page),
+          totalPages,
+          totalItems: totalSuppliers,
+          itemsPerPage: parseInt(limit),
+          hasNextPage: page < totalPages,
+          hasPrevPage: page > 1
+        }
+      };
+    } catch (error) {
+      console.error('Error in getSuppliers:', error);
+      throw createError.internal('Failed to retrieve suppliers');
+    }
+  }
+
+  // Get supplier by ID
+  async getSupplierById(supplierId) {
+    try {
+      const supplier = await User.findOne({_id: supplierId, type: 'supplier'});
+      if (!supplier) {
+        return null;
+      }
+      // Remove sensitive data
+      delete supplier.password;
+      delete supplier.refreshToken;
+      
+      return supplier;
+    } catch (error) {
+      console.error('Error in getSupplierById:', error);
+      throw createError.internal('Failed to retrieve supplier');
+    }
+  }
+
+  // Update supplier
+  async updateSupplier(supplierId, updateData, currentUser) {
+    try {
+      // Check if supplier exists
+      const existingSupplier = await User.findOne({ _id: supplierId, type: 'supplier' });
+      if (!existingSupplier) {
+        throw createError.notFound('Supplier not found');
+      }
+
+      // Only admins can update suppliers
+      if (currentUser.type !== 'admin') {
+        throw createError.forbidden('Insufficient permissions to update supplier');
+      }
+
+      // Check email uniqueness if being updated
+      if (updateData.email && updateData.email !== existingSupplier.email) {
+        const emailExists = await User.findOne({ email: updateData.email });
+        if (emailExists) {
+          throw createError.conflict('Email already exists');
+        }
+      }
+
+      // Update supplier
+      const updatedSupplier = await User.findByIdAndUpdate(
+        supplierId,
+        updateData,
+        { new: true, runValidators: true }
+      ).select('-password -refreshToken');
+
+      return updatedSupplier;
+    } catch (error) {
+      // Re-throw ApiError instances as-is
+      if (error.statusCode) {
+        throw error;
+      }
+      
+      // Handle Mongoose validation errors
+      if (error.name === 'ValidationError') {
+        const validationErrors = Object.values(error.errors).map(err => err.message);
+        throw createError.badRequest(`Validation failed: ${validationErrors.join(', ')}`);
+      }
+      
+      // Handle duplicate key errors
+      if (error.code === 11000) {
+        if (error.keyPattern.email) {
+          throw createError.conflict('Email already exists');
+        }
+        throw createError.conflict('Duplicate field value');
+      }
+      
+      console.error('Error in updateSupplier:', error);
+      throw createError.internal('Failed to update supplier');
+    }
+  }
+
+  // Delete supplier
+  async deleteSupplier(supplierId, currentUser) {
+    try {
+      // Check if supplier exists
+      const existingSupplier = await User.findOne({ _id: supplierId, type: 'supplier' });
+      if (!existingSupplier) {
+        throw createError.notFound('Supplier not found');
+      }
+
+      // Only admins can delete suppliers
+      if (currentUser.type !== 'admin') {
+        throw createError.forbidden('Insufficient permissions to delete supplier');
+      }
+
+      // Delete supplier
+      await User.findByIdAndDelete(supplierId);
+
+      return { message: 'Supplier deleted successfully' };
+    } catch (error) {
+      // Re-throw ApiError instances as-is
+      if (error.statusCode) {
+        throw error;
+      }
+      
+      console.error('Error in deleteSupplier:', error);
+      throw createError.internal('Failed to delete supplier');
+    }
+  }
 }
 
 module.exports = new UserService();

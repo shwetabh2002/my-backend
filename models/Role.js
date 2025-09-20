@@ -8,13 +8,13 @@ const roleSchema = new mongoose.Schema({
     trim: true,
     uppercase: true,
     enum: {
-      values: ['ADMIN', 'EMPLOYEE', 'CUSTOMER'],
-      message: 'Role must be ADMIN, EMPLOYEE, or CUSTOMER'
+      values: ['ADMIN', 'EMPLOYEE', 'CUSTOMER', 'SUPPLIER'],
+      message: 'Role must be ADMIN, EMPLOYEE, CUSTOMER, or SUPPLIER'
     }
   },
   permissions: [{
     type: String,
-    required: [true, 'At least one permission is required'],
+    required: false,
     // enum: {
     //   values: [
     //     'user:create',

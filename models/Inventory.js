@@ -149,6 +149,11 @@ const inventorySchema = new mongoose.Schema({
     },
     default: 'active'
   },
+
+  supplierId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User'
+  },
   
   // Images
   images: [{

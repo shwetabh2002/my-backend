@@ -250,6 +250,124 @@ class UserController {
       });
     }
   };
+
+  // Supplier CRUD methods
+  createSupplier = asyncHandler(async (req, res) => {
+    const userData = req.body;
+
+    const supplier = await userService.createSupplier(userData);
+
+    res.status(201).json({
+      success: true,
+      message: 'Supplier added successfully',
+      data: supplier
+    });
+  });
+
+  getSuppliers = async (req, res) => {
+    try {
+      const { page = 1, limit = 10, search, status } = req.query;
+      
+      const options = {
+        page: parseInt(page),
+        limit: parseInt(limit),
+        search,
+        status
+      };
+      
+      const result = await userService.getSuppliers(options);
+      
+      res.status(200).json({
+        success: true,
+        message: 'Suppliers retrieved successfully',
+        data: result
+      });
+    } catch (error) {
+      console.error('Get suppliers error:', error);
+      
+      // Handle ApiError instances
+      if (error.statusCode) {
+        return res.status(error.statusCode).json({
+          success: false,
+          message: error.message,
+          statusCode: error.statusCode
+        });
+      }
+      
+      // Handle unexpected errors
+      res.status(500).json({
+        success: false,
+        message: 'Internal server error',
+        statusCode: 500
+      });
+    }
+  };
+
+  getSupplierById = async (req, res) => {
+    try {
+      const supplierId = req.params.id;
+      const supplier = await userService.getSupplierById(supplierId);
+      
+      if (!supplier) {
+        return res.status(404).json({
+          success: false,
+          message: 'Supplier not found',
+          statusCode: 404
+        });
+      }
+      
+      res.status(200).json({
+        success: true,
+        message: 'Supplier retrieved successfully',
+        data: supplier
+      });
+    } catch (error) {
+      console.error('Get supplier by ID error:', error);
+      
+      // Handle ApiError instances
+      if (error.statusCode) {
+        return res.status(error.statusCode).json({
+          success: false,
+          message: error.message,
+          statusCode: error.statusCode
+        });
+      }
+      
+      // Handle unexpected errors
+      res.status(500).json({
+        success: false,
+        message: 'Internal server error',
+        statusCode: 500
+      });
+    }
+  };
+
+  updateSupplier = asyncHandler(async (req, res) => {
+    const supplierId = req.params.id;
+    const updateData = req.body;
+    const currentUser = req.user;
+
+    const supplier = await userService.updateSupplier(supplierId, updateData, currentUser);
+
+    res.status(200).json({
+      success: true,
+      message: 'Supplier updated successfully',
+      data: supplier
+    });
+  });
+
+  deleteSupplier = asyncHandler(async (req, res) => {
+    const supplierId = req.params.id;
+    const currentUser = req.user;
+
+    const result = await userService.deleteSupplier(supplierId, currentUser);
+
+    res.status(200).json({
+      success: true,
+      message: 'Supplier deleted successfully',
+      data: result
+    });
+  });
 }
 
 module.exports = new UserController();

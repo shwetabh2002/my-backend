@@ -76,6 +76,34 @@ router.get('/get-customer/:id',
   isEmployeeOrAdmin, 
   userController.getCustomerById
 );
+
+// Supplier routes
+router.post('/supplier', 
+  validate(schemas.createSupplier), 
+  userController.createSupplier
+);
+
+router.get('/supplier', 
+  isEmployeeOrAdmin, 
+  userController.getSuppliers
+);
+
+router.get('/supplier/:id', 
+  isEmployeeOrAdmin, 
+  userController.getSupplierById
+);
+
+router.put('/supplier/:id', 
+  isAdmin, 
+  validate(schemas.updateSupplier), 
+  userController.updateSupplier
+);
+
+router.delete('/supplier/:id', 
+  isAdmin, 
+  userController.deleteSupplier
+);
+
 // Routes with resource-specific access control
 router.get('/:id', 
   canAccessOwnResource('user', 'read'), 

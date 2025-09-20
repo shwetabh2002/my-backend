@@ -95,7 +95,8 @@ quotationData.deliveryAddress = customer.address
       } else {
         quotationData.totalDiscount = 0;
       }
-
+      const vat = await Company.findOne({});
+      quotationData.VAT = vat.VAT;
       // Calculate vat amount (on subtotal + additional expenses - discount)
       const taxableAmount = quotationData.subtotal + additionalExpensesAmount - quotationData.totalDiscount;
       // console.log('Calculated taxable amount:', taxableAmount);
