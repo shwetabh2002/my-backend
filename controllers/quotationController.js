@@ -258,7 +258,8 @@ const markAsViewed = async (req, res) => {
 const acceptQuotation = async (req, res) => {
   try {
     const { id } = req.params;
-    const quotation = await quotationService.acceptQuotation(id);
+    const userId = req.user.id;
+    const quotation = await quotationService.acceptQuotation(id, userId);
 
     res.status(200).json({
       success: true,
@@ -516,6 +517,112 @@ const convertQuotation = async (req, res) => {
   }
 };
 
+/**
+ * Get accepted quotations
+ * @param {Object} req - Express request object
+ * @param {Object} res - Express response object
+ */
+const getAcceptedQuotations = async (req, res) => {
+  try {
+    const {
+      page = 1,
+      limit = 10,
+      sort = '-createdAt',
+      search,
+      currency,
+      customerId,
+      createdBy,
+      dateFrom,
+      dateTo,
+      validTillFrom,
+      validTillTo
+    } = req.query;
+
+    const filters = {};
+    const options = {
+      page: parseInt(page),
+      limit: parseInt(limit),
+      sort,
+      search,
+      currency,
+      customerId,
+      createdBy,
+      dateFrom,
+      dateTo,
+      validTillFrom,
+      validTillTo
+    };
+
+    const result = await quotationService.getAcceptedQuotations(filters, options);
+
+    res.status(200).json({
+      success: true,
+      message: 'Accepted Orders fetched successfully',
+      data: result.quotations,
+      pagination: result.pagination,
+      summary: result.summary
+    });
+  } catch (error) {
+    res.status(error.statusCode || 500).json({
+      success: false,
+      message: error.message,
+      ...(process.env.NODE_ENV === 'development' && { stack: error.stack })
+    });
+  }
+};
+
+/**
+ * Update accepted quotation
+ * @param {Object} req - Express request object
+ * @param {Object} res - Express response object
+ */
+const updateAcceptedQuotation = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const userId = req.user.id;
+    const updateData = req.body;
+
+    const quotation = await quotationService.updateAcceptedQuotation(id, updateData, userId);
+
+    res.status(200).json({
+      success: true,
+      message: 'Accepted order updated successfully',
+      data: quotation
+    });
+  } catch (error) {
+    res.status(error.statusCode || 500).json({
+      success: false,
+      message: error.message,
+      ...(process.env.NODE_ENV === 'development' && { stack: error.stack })
+    });
+  }
+};
+
+/**
+ * Send quotation for review
+ * @param {Object} req - Express request object
+ * @param {Object} res - Express response object
+ */
+const sendReview = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const userId = req.user.id;
+    const quotation = await quotationService.sendReview(id, userId);
+
+    res.status(200).json({
+      success: true,
+      message: 'Quotation sent for review successfully',
+      data: quotation
+    });
+  } catch (error) {
+    res.status(error.statusCode || 500).json({
+      success: false,
+      message: error.message,
+      ...(process.env.NODE_ENV === 'development' && { stack: error.stack })
+    });
+  }
+};
+
 module.exports = {
   createQuotation,
   getQuotations,
@@ -535,5 +642,8 @@ module.exports = {
   searchQuotations,
   getQuotationStats,
   duplicateQuotation,
-  convertQuotation
+  convertQuotation,
+  getAcceptedQuotations,
+  updateAcceptedQuotation,
+  sendReview
 };

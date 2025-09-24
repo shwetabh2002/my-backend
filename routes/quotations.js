@@ -53,6 +53,19 @@ router.get('/number/:number',
   quotationController.getQuotationByNumber
 );
 
+// Get accepted quotations (must be before /:id route)
+router.get('/accepted-orders', 
+  hasPermission('quotation:read'),
+  quotationController.getAcceptedQuotations
+);
+
+// Update accepted quotation (must be before /:id route)
+router.put('/accepted-orders/:id', 
+  hasPermission('quotation:update'),
+  validate(schemas.updateAcceptedQuotation),
+  quotationController.updateAcceptedQuotation
+);
+
 router.get('/:id', 
   hasPermission('quotation:read'),
   quotationController.getQuotationById
@@ -92,6 +105,10 @@ router.patch('/:id/accept',
 
 router.patch('/:id/reject', 
   quotationController.rejectQuotation
+);
+
+router.patch('/:id/send-review', 
+  quotationController.sendReview
 );
 
 router.patch('/:id/convert', 

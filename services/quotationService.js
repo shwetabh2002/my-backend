@@ -120,7 +120,7 @@ quotationData.deliveryAddress = customer.address
       });
       
       
-      await this.updateInventoryForQuotation(quotationData.items);
+      await this.updateInventoryForQuotation(quotationData.items,'hold');
 
       await quotation.save();
       console.log('Quotation saved successfully:', quotation.quotationId);
@@ -248,6 +248,7 @@ quotationData.deliveryAddress = customer.address
       // Pagination
       const skip = (page - 1) * limit;
       const limitNum = parseInt(limit);
+      query.status = { $eq: 'draft' };
 
       // Execute query with pagination
       const quotations = await Quotation.find(query)
@@ -851,6 +852,401 @@ quotationData.deliveryAddress = customer.address
   }
 
   /**
+   * Get all quotations with filtering, sorting, and pagination
+   * @param {Object} filters - Filter criteria
+   * @param {Object} options - Query options (page, limit, sort, etc.)
+   * @returns {Promise<Object>} Paginated quotations
+   */
+  async getAcceptedQuotations(filters , options ) {
+    try {
+      const {
+        page = 1,
+        limit = 10,
+        sort = '-createdAt',
+        search,
+        status,
+        customerId,
+        createdBy,
+        currency,
+        dateFrom,
+        dateTo,
+        validTillFrom,
+        validTillTo
+      } = options;
+
+      // Build query
+      const query = {};
+
+      if (status) query.status = status;
+      if (customerId) query['customer.custId'] = customerId;
+      if (createdBy) query.createdBy = createdBy;
+      if (currency) query.currency = currency;
+
+      // Date range filters
+      if (dateFrom || dateTo) {
+        query.createdAt = {};
+        if (dateFrom) query.createdAt.$gte = new Date(dateFrom);
+        if (dateTo) query.createdAt.$lte = new Date(dateTo);
+      }
+
+      if (validTillFrom || validTillTo) {
+        query.validTill = {};
+        if (validTillFrom) query.validTill.$gte = new Date(validTillFrom);
+        if (validTillTo) query.validTill.$lte = new Date(validTillTo);
+      }
+
+      // Search functionality
+      if (search) {
+        query.$or = [
+          { quotationNumber: new RegExp(search, 'i') },
+          { title: new RegExp(search, 'i') },
+          { 'customer.name': new RegExp(search, 'i') },
+          { 'customer.email': new RegExp(search, 'i') },
+          { 'customer.custId': new RegExp(search, 'i') }
+        ];
+      }
+
+      // Pagination
+      const skip = (page - 1) * limit;
+      const limitNum = parseInt(limit);
+      query.status = { $eq: 'accepted' };
+
+      // Execute query with pagination
+      const quotations = await Quotation.find(query)
+        .populate('createdBy', 'name email')
+        .populate('updatedBy', 'name email')
+        .populate('customer.userId', 'name email')
+        .populate('items.supplierId', 'name email custId')
+        .sort(sort)
+        .skip(skip)
+        .limit(limitNum)
+        .lean();
+
+      // Get total count for pagination
+      const total = await Quotation.countDocuments(query);
+
+      // Get summary data for dynamic filters
+      const summaryData = await Quotation.aggregate([
+        { $match: {} }, // Match all quotations for summary
+        {
+          $lookup: {
+            from: 'users',
+            localField: 'createdBy',
+            foreignField: '_id',
+            as: 'creatorInfo'
+          }
+        },
+        {
+          $group: {
+            _id: null,
+            totalQuotations: { $sum: 1 },
+            statuses: { $addToSet: '$status' },
+            currencies: { $addToSet: '$currency' },
+            customers: { $addToSet: '$customer.custId' },
+            creators: { 
+              $addToSet: { $arrayElemAt: ['$creatorInfo.name', 0] }
+            },
+            // Date ranges
+            minCreatedDate: { $min: '$createdAt' },
+            maxCreatedDate: { $max: '$createdAt' },
+            minValidTillDate: { $min: '$validTill' },
+            maxValidTillDate: { $max: '$validTill' }
+          }
+        }
+      ]);
+
+      const summary = summaryData[0] || {
+        totalQuotations: 0,
+        statuses: [],
+        currencies: [],
+        customers: [],
+        creators: [],
+        minCreatedDate: null,
+        maxCreatedDate: null,
+        minValidTillDate: null,
+        maxValidTillDate: null
+      };
+
+      const result = {
+        quotations,
+        pagination: {
+          page: parseInt(page),
+          limit: limitNum,
+          total,
+          pages: Math.ceil(total / limitNum),
+          hasNext: page < Math.ceil(total / limitNum),
+          hasPrev: page > 1
+        },
+        summary: {
+          appliedFilters: {
+            search: search || null,
+            status: status || null,
+            customerId: customerId || null,
+            createdBy: createdBy || null,
+            currency: currency || null,
+            dateFrom: dateFrom || null,
+            dateTo: dateTo || null,
+            validTillFrom: validTillFrom || null,
+            validTillTo: validTillTo || null
+          },
+          availableFilters: {
+            // Basic filters
+            statuses: summary.statuses ? summary.statuses.sort() : [],
+            currencies: summary.currencies ? summary.currencies.sort() : [],
+            customers: summary.customers ? summary.customers.sort() : [],
+            creators: summary.creators ? summary.creators.sort() : [],
+            
+            // Date ranges for date pickers
+            dateRanges: {
+              created: {
+                min: summary.minCreatedDate,
+                max: summary.maxCreatedDate
+              },
+              validTill: {
+                min: summary.minValidTillDate,
+                max: summary.maxValidTillDate
+              }
+            },
+            
+            // Counts for each filter option
+            counts: {
+              totalQuotations: summary.totalQuotations || 0
+            },
+            
+            // Sort options
+            sortOptions: [
+              { value: '-createdAt', label: 'Newest First' },
+              { value: 'createdAt', label: 'Oldest First' },
+              { value: '-updatedAt', label: 'Recently Updated' },
+              { value: 'updatedAt', label: 'Least Recently Updated' },
+              { value: '-totalAmount', label: 'Highest Amount' },
+              { value: 'totalAmount', label: 'Lowest Amount' },
+              { value: 'quotationNumber', label: 'order Number A-Z' },
+              { value: '-quotationNumber', label: 'order Number Z-A' }
+            ],
+            
+            // Pagination options
+            pageSizes: [5, 10, 25, 50, 100]
+          },
+          sortBy: sort,
+          totalResults: total,
+          showingResults: `${quotations.length} of ${total} orders`
+        }
+      };
+
+      return result;
+    } catch (error) {
+      throw createError.internal('Failed to fetch orders');
+    }
+  }
+
+  /**
+   * Update accepted quotation (only editable fields)
+   * @param {string} quotationId - Quotation ID
+   * @param {Object} updateData - Update data
+   * @param {string} userId - User ID who is updating
+   * @returns {Promise<Object>} Updated quotation
+   */
+  async updateAcceptedQuotation(quotationId, updateData, userId) {
+    try {
+      const quotation = await Quotation.findById(quotationId);
+      
+      if (!quotation) {
+        throw createError.notFound('Quotation not found');
+      }
+
+      // Check if quotation is accepted
+      if (quotation.status !== 'accepted') {
+        throw createError.badRequest('Only accepted quotations can be updated');
+      }
+
+      // Use all fields from payload (except system fields)
+      const filteredUpdateData = { ...updateData };
+      
+      // Remove system fields that shouldn't be updated directly
+      delete filteredUpdateData._id;
+      delete filteredUpdateData.createdAt;
+      delete filteredUpdateData.createdBy;
+      delete filteredUpdateData.quotationId;
+      delete filteredUpdateData.quotationNumber;
+      
+      // Add update metadata
+      filteredUpdateData.updatedBy = userId;
+      filteredUpdateData.updatedAt = new Date();
+
+      // Recalculate amounts if discount or additionalExpenses are being updated
+      if (updateData.discount !== undefined || updateData.additionalExpenses !== undefined) {
+        // Get current quotation items to calculate subtotal
+        const currentQuotation = await Quotation.findById(quotationId).select('items currency');
+        
+        // Calculate subtotal from items
+        let subtotal = 0;
+        if (currentQuotation.items && currentQuotation.items.length > 0) {
+          subtotal = currentQuotation.items.reduce((sum, item) => {
+            return sum + (item.sellingPrice * item.quantity);
+          }, 0);
+        }
+
+        // Apply discount
+        let discountAmount = 0;
+        if (updateData.discount !== undefined && updateData.discount > 0) {
+          if (updateData.discountType === 'percentage') {
+            discountAmount = (subtotal * updateData.discount) / 100;
+          } else {
+            discountAmount = updateData.discount;
+          }
+        }
+
+        // Calculate amount after discount
+        const amountAfterDiscount = subtotal - discountAmount;
+
+        // Add additional expenses
+        let additionalExpenseAmount = 0;
+        if (updateData.additionalExpenses && updateData.additionalExpenses.amount) {
+          additionalExpenseAmount = updateData.additionalExpenses.amount;
+        }
+
+        // Calculate total amount
+        const totalAmount = amountAfterDiscount + additionalExpenseAmount;
+
+        // Calculate VAT
+        const vatRate = updateData.VAT || quotation.VAT || 0;
+        const vatAmount = (totalAmount * vatRate) / 100;
+        const finalTotal = totalAmount + vatAmount;
+
+        // Add calculated amounts to update data
+        filteredUpdateData.subtotal = subtotal;
+        filteredUpdateData.discountAmount = discountAmount;
+        filteredUpdateData.additionalExpenseAmount = additionalExpenseAmount;
+        filteredUpdateData.totalAmount = totalAmount;
+        filteredUpdateData.vatAmount = vatAmount;
+        filteredUpdateData.finalTotal = finalTotal;
+      }
+
+      // Update the quotation
+      const updatedQuotation = await Quotation.findByIdAndUpdate(
+        quotationId,
+        { $set: filteredUpdateData },
+        { new: true, runValidators: true }
+      )
+        .populate('createdBy', 'name email')
+        .populate('updatedBy', 'name email')
+        .populate('customer.userId', 'name email')
+        .populate('items.supplierId', 'name email custId')
+        .populate('statusHistory.updatedBy', 'name email');
+
+      return updatedQuotation;
+    } catch (error) {
+      console.error('Error updating accepted quotation:', error);
+      if (error.statusCode) {
+        throw error;
+      }
+      throw createError.internal('Failed to update accepted quotation');
+    }
+  }
+
+  /**
+   * Send quotation for review (change status to review)
+   * @param {string} quotationId - Quotation ID
+   * @param {string} userId - User ID who is sending for review
+   * @returns {Promise<Object>} Updated quotation
+   */
+  async sendReview(quotationId, userId) {
+    try {
+      const quotation = await Quotation.findById(quotationId);
+      
+      if (!quotation) {
+        throw createError.notFound('Quotation not found');
+      }
+
+      // Check if quotation can be sent for review
+      if (quotation.status === 'review') {
+        throw createError.badRequest('Quotation is already under review');
+      }
+
+      // Update status and add to history
+      quotation.status = 'review';
+      quotation.statusHistory.push({
+        status: 'review',
+        date: new Date(),
+        updatedBy: userId
+      });
+      quotation.updatedBy = userId;
+
+      await quotation.save();
+
+      // Populate the updated quotation
+      const updatedQuotation = await Quotation.findById(quotationId)
+        .populate('createdBy', 'name email')
+        .populate('updatedBy', 'name email')
+        .populate('customer.userId', 'name email')
+        .populate('items.supplierId', 'name email custId')
+        .populate('statusHistory.updatedBy', 'name email');
+
+        await this.updateInventoryForQuotation(updatedQuotation.items,'hold');
+
+      return updatedQuotation;
+    } catch (error) {
+      console.error('Error sending quotation for review:', error);
+      if (error.statusCode) {
+        throw error;
+      }
+      throw createError.internal('Failed to send quotation for review');
+    }
+  }
+
+  /**
+   * Accept a quotation (change status to accepted)
+   * @param {string} quotationId - Quotation ID
+   * @param {string} userId - User ID who is accepting
+   * @returns {Promise<Object>} Updated quotation
+   */
+  async acceptQuotation(quotationId, userId) {
+    try {
+      const quotation = await Quotation.findById(quotationId);
+      
+      if (!quotation) {
+        throw createError.notFound('Quotation not found');
+      }
+
+      // Check if quotation is already accepted
+      if (quotation.status === 'accepted') {
+        throw createError.badRequest('Quotation is already accepted');
+      }
+
+      // Update status and add to history
+      quotation.status = 'accepted';
+      quotation.statusHistory.push({
+        status: 'accepted',
+        date: new Date(),
+        updatedBy: userId
+      });
+      quotation.updatedBy = userId;
+
+      await quotation.save();
+
+      // Populate the updated quotation
+      const updatedQuotation = await Quotation.findById(quotationId)
+        .populate('createdBy', 'name email')
+        .populate('updatedBy', 'name email')
+        .populate('customer.userId', 'name email')
+        .populate('items.supplierId', 'name email custId')
+        .populate('statusHistory.updatedBy', 'name email');
+
+        await this.updateInventoryForQuotation(updatedQuotation.items,'accepted');
+
+
+      return updatedQuotation;
+    } catch (error) {
+      console.error('Error accepting quotation:', error);
+      if (error.statusCode) {
+        throw error;
+      }
+      throw createError.internal('Failed to accept quotation');
+    }
+  }
+
+  /**
    * Search quotations
    * @param {string} searchTerm - Search term
    * @param {Object} options - Search options
@@ -1025,7 +1421,7 @@ quotationData.deliveryAddress = customer.address
    * Update inventory items based on quotation
    * @param {Array} items - Quotation items
    */
-  async updateInventoryForQuotation(items) {
+  async updateInventoryForQuotation(items,vinStatus) {
     try {
       console.log('Updating inventory for quotation items:', items.length);
       
@@ -1064,7 +1460,7 @@ quotationData.deliveryAddress = customer.address
           },
           {
             $set: {
-              'vinNumber.$[elem].status': 'hold',
+              'vinNumber.$[elem].status': vinStatus,
               quantity: newQuantity,
               inStock: inStock,
               status: status

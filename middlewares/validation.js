@@ -1130,6 +1130,8 @@ const schemas = {
     })
   }),
 
+  updateAcceptedQuotation: Joi.object().unknown(true).min(1), // Allow any fields, at least one must be provided
+
   quotationFilters: Joi.object({
     search: Joi.string().min(1).max(100).messages({
       'string.min': 'Search term must be at least 1 character long',
