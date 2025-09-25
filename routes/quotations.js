@@ -59,6 +59,11 @@ router.get('/accepted-orders',
   quotationController.getAcceptedQuotations
 );
 
+router.get('/review-orders', 
+  hasPermission('quotation:read'),
+  quotationController.getReviewOrders
+);
+
 // Update accepted quotation (must be before /:id route)
 router.put('/accepted-orders/:id', 
   hasPermission('quotation:update'),
@@ -120,6 +125,17 @@ router.patch('/:id/convert',
 router.post('/:id/duplicate', 
   hasPermission('quotation:create'),
   quotationController.duplicateQuotation
+);
+
+
+router.patch('/:id/approve', 
+  hasPermission('quotation:update'),
+  quotationController.approveQuotation
+);
+
+router.patch('/:id/confirm', 
+  hasPermission('quotation:update'),
+  quotationController.confirmQuotation
 );
 
 module.exports = router;

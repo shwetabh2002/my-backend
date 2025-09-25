@@ -380,6 +380,205 @@ quotationData.deliveryAddress = customer.address
   }
 
   /**
+   * Get review quotations (review, approved, confirmed)
+   * @param {Object} filters - Filter options
+   * @param {Object} options - Query options
+   * @returns {Promise<Object>} Paginated quotations
+   */
+  async getReviewQuotations(filters = {}, options = {}) {
+    try {
+      const {
+        page = 1,
+        limit = 10,
+        sort = '-createdAt',
+        search,
+        status,
+        customerId,
+        createdBy,
+        currency,
+        dateFrom,
+        dateTo,
+        validTillFrom,
+        validTillTo
+      } = { ...filters, ...options };
+
+      // Build query - Default to review, approved, confirmed statuses
+      const query = {};
+
+      // Status filter - if provided, use it; otherwise default to review, approved, confirmed
+      if (status) {
+        // Support single status or array of statuses
+        if (Array.isArray(status)) {
+          query.status = { $in: status };
+        } else {
+          query.status = status;
+        }
+      } else {
+        // Default to review, approved, confirmed
+        query.status = { $in: ['review', 'approved', 'confirmed','rejected'] };
+      }
+
+      if (customerId) query['customer.custId'] = customerId;
+      if (createdBy) query.createdBy = createdBy;
+      if (currency) query.currency = currency;
+
+      // Date range filters
+      if (dateFrom || dateTo) {
+        query.createdAt = {};
+        if (dateFrom) query.createdAt.$gte = new Date(dateFrom);
+        if (dateTo) query.createdAt.$lte = new Date(dateTo);
+      }
+
+      if (validTillFrom || validTillTo) {
+        query.validTill = {};
+        if (validTillFrom) query.validTill.$gte = new Date(validTillFrom);
+        if (validTillTo) query.validTill.$lte = new Date(validTillTo);
+      }
+
+      // Search functionality
+      if (search) {
+        query.$or = [
+          { quotationNumber: new RegExp(search, 'i') },
+          { title: new RegExp(search, 'i') },
+          { 'customer.name': new RegExp(search, 'i') },
+          { 'customer.email': new RegExp(search, 'i') },
+          { 'customer.custId': new RegExp(search, 'i') }
+        ];
+      }
+      // Pagination
+      const skip = (page - 1) * limit;
+      const limitNum = parseInt(limit);
+
+      // Execute query with pagination
+      const quotations = await Quotation.find(query)
+        .populate('createdBy', 'name email')
+        .populate('updatedBy', 'name email')
+        .populate('customer.userId', 'name email')
+        .populate('items.supplierId', 'name email custId')
+        .sort(sort)
+        .skip(skip)
+        .limit(limitNum)
+        .lean();
+
+      // Get total count for pagination
+      const total = await Quotation.countDocuments(query);
+
+      // Get summary data for dynamic filters
+      const summaryData = await Quotation.aggregate([
+        { $match: { status: { $in: ['review', 'approved', 'confirmed','rejected'] } } }, // Match review, approved, confirmed quotations for summary
+        {
+          $lookup: {
+            from: 'users',
+            localField: 'createdBy',
+            foreignField: '_id',
+            as: 'creatorInfo'
+          }
+        },
+        {
+          $group: {
+            _id: null,
+            totalQuotations: { $sum: 1 },
+            statuses: { $addToSet: '$status' },
+            currencies: { $addToSet: '$currency' },
+            customers: { $addToSet: '$customer.custId' },
+            creators: { 
+              $addToSet: { $arrayElemAt: ['$creatorInfo.name', 0] }
+            },
+            // Date ranges
+            minCreatedDate: { $min: '$createdAt' },
+            maxCreatedDate: { $max: '$createdAt' },
+            minValidTillDate: { $min: '$validTill' },
+            maxValidTillDate: { $max: '$validTill' }
+          }
+        }
+      ]);
+
+      const summary = summaryData[0] || {
+        totalQuotations: 0,
+        statuses: [],
+        currencies: [],
+        customers: [],
+        creators: [],
+        minCreatedDate: null,
+        maxCreatedDate: null,
+        minValidTillDate: null,
+        maxValidTillDate: null
+      };
+
+      const result = {
+        quotations,
+        pagination: {
+          page: parseInt(page),
+          limit: limitNum,
+          total,
+          pages: Math.ceil(total / limitNum),
+          hasNext: page < Math.ceil(total / limitNum),
+          hasPrev: page > 1
+        },
+        summary: {
+          appliedFilters: {
+            search: search || null,
+            status: status || ['review', 'approved', 'confirmed','rejected'],
+            customerId: customerId || null,
+            createdBy: createdBy || null,
+            currency: currency || null,
+            dateFrom: dateFrom || null,
+            dateTo: dateTo || null,
+            validTillFrom: validTillFrom || null,
+            validTillTo: validTillTo || null
+          },
+          availableFilters: {
+            // Basic filters
+            statuses: summary.statuses ? summary.statuses.sort() : [],
+            currencies: summary.currencies ? summary.currencies.sort() : [],
+            customers: summary.customers ? summary.customers.sort() : [],
+            creators: summary.creators ? summary.creators.sort() : [],
+            
+            // Date ranges for date pickers
+            dateRanges: {
+              created: {
+                min: summary.minCreatedDate,
+                max: summary.maxCreatedDate
+              },
+              validTill: {
+                min: summary.minValidTillDate,
+                max: summary.maxValidTillDate
+              }
+            },
+            
+            // Counts for each filter option
+            counts: {
+              totalQuotations: summary.totalQuotations || 0
+            },
+            
+            // Sort options
+            sortOptions: [
+              { value: '-createdAt', label: 'Newest First' },
+              { value: 'createdAt', label: 'Oldest First' },
+              { value: '-updatedAt', label: 'Recently Updated' },
+              { value: 'updatedAt', label: 'Least Recently Updated' },
+              { value: '-totalAmount', label: 'Highest Amount' },
+              { value: 'totalAmount', label: 'Lowest Amount' },
+              { value: 'quotationNumber', label: 'Quotation Number A-Z' },
+              { value: '-quotationNumber', label: 'Quotation Number Z-A' }
+            ],
+            
+            // Pagination options
+            pageSizes: [5, 10, 25, 50, 100]
+          },
+          sortBy: sort,
+          totalResults: total,
+          showingResults: `${quotations.length} of ${total} quotations`
+        }
+      };
+
+      return result;
+    } catch (error) {
+      throw createError.internal('Failed to fetch review orders');
+    }
+  }
+
+  /**
    * Get status counts for filter summary
    * @returns {Promise<Array>} Status counts
    */
@@ -723,9 +922,10 @@ quotationData.deliveryAddress = customer.address
   /**
    * Reject quotation
    * @param {string} quotationId - Quotation ID
+   * @param {string} updatedBy - User ID who rejected the quotation
    * @returns {Promise<Object>} Updated quotation
    */
-  async rejectQuotation(quotationId) {
+  async rejectQuotation(quotationId, updatedBy) {
     try {
       const quotation = await Quotation.findById(quotationId);
 
@@ -733,14 +933,20 @@ quotationData.deliveryAddress = customer.address
         throw createError.notFound('Quotation not found');
       }
 
-      if (!['sent', 'viewed'].includes(quotation.status)) {
-        throw createError.badRequest('Only sent or viewed quotations can be rejected');
-      }
-
       quotation.status = 'rejected';
+      quotation.updatedBy = updatedBy;
       quotation.respondedAt = new Date();
 
+      quotation.statusHistory.push({
+        status: 'rejected',
+        updatedBy: updatedBy,
+        updatedAt: new Date()
+      });
+
       await quotation.save();
+
+      // Free up inventory before rejecting
+      await this.freeUpInventoryForQuotation(quotation.items);
 
       return quotation;
     } catch (error) {
@@ -851,6 +1057,7 @@ quotationData.deliveryAddress = customer.address
     }
   }
 
+
   /**
    * Get all quotations with filtering, sorting, and pagination
    * @param {Object} filters - Filter criteria
@@ -909,7 +1116,7 @@ quotationData.deliveryAddress = customer.address
       // Pagination
       const skip = (page - 1) * limit;
       const limitNum = parseInt(limit);
-      query.status = { $eq: 'accepted' };
+      query.status = { $in: ['accepted', 'approved', 'confirmed','review','rejected'] };
 
       // Execute query with pagination
       const quotations = await Quotation.find(query)
@@ -1164,6 +1371,11 @@ quotationData.deliveryAddress = customer.address
         throw createError.badRequest('Quotation is already under review');
       }
 
+      // Only accepted quotations can be sent for review
+      if (quotation.status !== 'accepted') {
+        throw createError.badRequest('Only accepted quotations can be sent for review');
+      }
+
       // Update status and add to history
       quotation.status = 'review';
       quotation.statusHistory.push({
@@ -1233,7 +1445,7 @@ quotationData.deliveryAddress = customer.address
         .populate('items.supplierId', 'name email custId')
         .populate('statusHistory.updatedBy', 'name email');
 
-        await this.updateInventoryForQuotation(updatedQuotation.items,'accepted');
+        // await this.updateInventoryForQuotation(updatedQuotation.items,'accepted');
 
 
       return updatedQuotation;
@@ -1480,6 +1692,165 @@ quotationData.deliveryAddress = customer.address
       throw error;
     }
   }
+
+  /**
+   * Free up inventory for quotation (when quotation is rejected)
+   * @param {Array} items - Quotation items
+   */
+  async freeUpInventoryForQuotation(items) {
+    try {
+      console.log('Freeing up inventory for quotation items:', items.length);
+  
+      for (const item of items) {
+        if (!item.itemId) continue;
+  
+        // Get current inventory item
+        const inventoryItem = await Inventory.findById(item.itemId);
+        if (!inventoryItem) {
+          console.warn(`Inventory item not found: ${item.itemId}`);
+          continue;
+        }
+  
+        // Restore quantity
+        const newQuantity = inventoryItem.quantity + item.quantity;
+        const inStock = newQuantity > 0;
+  
+        // Base update data
+        const updateData = {
+          quantity: newQuantity,
+          inStock: inStock,
+          status: 'active',
+        };
+  
+        if (item.vinNumbers && item.vinNumbers.length > 0) {
+          // Ensure vinNumbers are only strings (chasisNumber values)
+          const vinNumbersOnly = item.vinNumbers.map(v =>
+            typeof v === 'string' ? v : v.chasisNumber
+          );
+  
+          // Update inventory and VIN numbers status together
+          await Inventory.findByIdAndUpdate(
+            item.itemId,
+            {
+              $set: {
+                ...updateData,
+                'vinNumber.$[elem].status': 'active',
+              },
+            },
+            {
+              arrayFilters: [
+                { 'elem.chasisNumber': { $in: vinNumbersOnly } },
+              ],
+              new: true,
+            }
+          );
+        } else {
+          // Update inventory item without VIN updates
+          await Inventory.findByIdAndUpdate(
+            item.itemId,
+            { $set: updateData },
+            { new: true }
+          );
+        }
+  
+        console.log(
+          `Freed up inventory for item ${item.itemId}: +${item.quantity} quantity, VINs set to active`
+        );
+      }
+    } catch (error) {
+      console.error('Error freeing up inventory for quotation:', error);
+      throw createError.internal('Failed to free up inventory');
+    }
+  }
+  
+
+  /**
+   * Approve quotation
+   * @param {string} quotationId - Quotation ID
+   * @param {string} userId - User ID who approved the quotation
+   * @returns {Promise<Object>} Updated quotation
+   */
+  async approveQuotation(quotationId, userId) {
+    try {
+      const quotation = await Quotation.findById(quotationId);
+      if (!quotation) {
+        throw createError.notFound('Quotation not found');
+      }
+      quotation.status = 'approved';
+      quotation.statusHistory.push({
+        status: 'approved',
+        date: new Date(),
+        updatedBy: userId
+      });
+      quotation.updatedBy = userId;
+      await quotation.save();
+      return quotation;
+    } catch (error) {
+      if (error.name === 'CastError') {
+        throw createError.badRequest('Invalid quotation ID format');
+      }
+      throw error;
+    }
+  }
+
+  /**
+   * Confirm quotation
+   * @param {string} quotationId - Quotation ID
+   * @param {string} userId - User ID who confirmed the quotation
+   * @returns {Promise<Object>} Updated quotation
+   */
+  async confirmQuotation(quotationId, userId) {
+    try {
+      const quotation = await Quotation.findById(quotationId);
+      if (!quotation) {
+        throw createError.notFound('Quotation not found');
+      }
+      quotation.status = 'confirmed';
+      quotation.updatedBy = userId;
+      quotation.statusHistory.push({
+        status: 'confirmed',
+        date: new Date(),
+        updatedBy: userId
+      });
+      await quotation.save();
+      return quotation;
+    } catch (error) {
+      if (error.name === 'CastError') {
+        throw createError.badRequest('Invalid quotation ID format');
+      }
+      throw error;
+    }
+  }
+
+  /**
+   * Review quotation
+   * @param {string} quotationId - Quotation ID
+   * @param {string} userId - User ID who reviewed the quotation
+   * @returns {Promise<Object>} Updated quotation
+   */
+  async reviewQuotation(quotationId, userId) {
+    try {
+      const quotation = await Quotation.findById(quotationId);
+      if (!quotation) {
+        throw createError.notFound('Quotation not found');
+      }
+      quotation.status = 'review';
+      quotation.updatedBy = userId;
+      quotation.statusHistory.push({
+        status: 'review',
+        date: new Date(),
+        updatedBy: userId
+        });
+      await quotation.save();
+      return quotation;
+    } catch (error) {
+      if (error.name === 'CastError') {
+        throw createError.badRequest('Invalid quotation ID format');
+      }
+      throw error;
+    }
+  }
 }
+
 
 module.exports = new QuotationService();

@@ -283,7 +283,8 @@ const acceptQuotation = async (req, res) => {
 const rejectQuotation = async (req, res) => {
   try {
     const { id } = req.params;
-    const quotation = await quotationService.rejectQuotation(id);
+    const updatedBy = req.user.id;
+    const quotation = await quotationService.rejectQuotation(id, updatedBy);
 
     res.status(200).json({
       success: true,
@@ -623,6 +624,89 @@ const sendReview = async (req, res) => {
   }
 };
 
+/**
+ * Approve quotation
+ * @param {Object} req - Express request object
+ * @param {Object} res - Express response object
+ */
+const approveQuotation = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const userId = req.user.id;
+    const quotation = await quotationService.approveQuotation(id, userId);
+
+    res.status(200).json({
+      success: true,
+      message: 'Order approved successfully',
+      data: quotation
+    });
+  } catch (error) {
+    res.status(error.statusCode || 500).json({
+      success: false,
+      message: error.message,
+      ...(process.env.NODE_ENV === 'development' && { stack: error.stack })
+    });
+  }
+  }
+
+
+/**
+ * Confirm quotation
+ * @param {Object} req - Express request object
+ * @param {Object} res - Express response object
+ */
+const confirmQuotation = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const userId = req.user.id;
+    const quotation = await quotationService.confirmQuotation(id, userId);
+
+    res.status(200).json({
+      success: true,
+      message: 'Order confirmed successfully',
+      data: quotation
+    });
+  } catch (error) {
+    res.status(error.statusCode || 500).json({
+      success: false,
+      message: error.message,
+      ...(process.env.NODE_ENV === 'development' && { stack: error.stack })
+    });
+  }
+}
+
+/**
+ * Get review quotations
+ * @param {Object} req - Express request object
+ * @param {Object} res - Express response object
+ */
+const getReviewOrders = async (req, res) => {
+  try {
+    const filters = req.query;
+    const options = {
+      page: parseInt(req.query.page) || 1,
+      limit: parseInt(req.query.limit) || 10,
+      sort: req.query.sort || '-createdAt'
+    };
+
+    const result = await quotationService.getReviewQuotations(filters, options);
+
+    res.status(200).json({
+      success: true,
+      message: 'Review Orders retrieved successfully',
+      data: result.quotations,
+      pagination: result.pagination,
+      summary: result.summary
+    });
+  } catch (error) {
+    res.status(error.statusCode || 500).json({
+      success: false,
+      message: error.message,
+      ...(process.env.NODE_ENV === 'development' && { stack: error.stack })
+    });
+  }
+};
+
 module.exports = {
   createQuotation,
   getQuotations,
@@ -645,5 +729,8 @@ module.exports = {
   convertQuotation,
   getAcceptedQuotations,
   updateAcceptedQuotation,
-  sendReview
+  sendReview,
+  approveQuotation,
+  confirmQuotation,
+  getReviewOrders
 };

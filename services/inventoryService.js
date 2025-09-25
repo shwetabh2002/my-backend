@@ -216,6 +216,7 @@ class InventoryService {
           // Since chassis numbers are unique, we can directly find quotations by chassis number
           quotations = await Quotation.find({
             'items.vinNumbers.chasisNumber': { $in: chassisNumbers },
+            status:{$ne:'rejected'}
           }).select('quotationId quotationNumber status createdAt customer.name items.vinNumbers');
 
           // console.log('Found quotations:', quotations.length);
