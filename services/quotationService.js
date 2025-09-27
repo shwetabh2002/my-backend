@@ -378,6 +378,186 @@ quotationData.deliveryAddress = customer.address
       throw createError.internal('Failed to fetch quotations');
     }
   }
+  async getApprovedQuotations(filters , options ) {
+    try {
+      const {
+        page = 1,
+        limit = 10,
+        sort = '-createdAt',
+        search,
+        status,
+        customerId,
+        createdBy,
+        currency,
+        dateFrom,
+        dateTo,
+        validTillFrom,
+        validTillTo
+      } = options;
+
+      // Build query - ALWAYS filter by approved status
+      const query = { status: 'approved' };
+
+      if (customerId) query['customer.custId'] = customerId;
+      if (createdBy) query.createdBy = createdBy;
+      if (currency) query.currency = currency;
+
+      // Date range filters
+      if (dateFrom || dateTo) {
+        query.createdAt = {};
+        if (dateFrom) query.createdAt.$gte = new Date(dateFrom);
+        if (dateTo) query.createdAt.$lte = new Date(dateTo);
+      }
+
+      if (validTillFrom || validTillTo) {
+        query.validTill = {};
+        if (validTillFrom) query.validTill.$gte = new Date(validTillFrom);
+        if (validTillTo) query.validTill.$lte = new Date(validTillTo);
+      }
+
+      // Search functionality
+      if (search) {
+        query.$or = [
+          { quotationNumber: new RegExp(search, 'i') },
+          { title: new RegExp(search, 'i') },
+          { 'customer.name': new RegExp(search, 'i') },
+          { 'customer.email': new RegExp(search, 'i') },
+          { 'customer.custId': new RegExp(search, 'i') }
+        ];
+      }
+
+      // Pagination
+      const skip = (page - 1) * limit;
+      const limitNum = parseInt(limit);
+
+      // Execute query with pagination
+      const quotations = await Quotation.find(query)
+        .populate('createdBy', 'name email')
+        .populate('updatedBy', 'name email')
+        .populate('customer.userId', 'name email')
+        .populate('items.supplierId', 'name email custId')
+        .sort(sort)
+        .skip(skip)
+        .limit(limitNum)
+        .lean();
+
+      // Get total count for pagination
+      const total = await Quotation.countDocuments(query);
+
+      // Get summary data for dynamic filters
+      const summaryData = await Quotation.aggregate([
+        { $match: { status: 'approved' } }, // Match only approved quotations for summary
+        {
+          $lookup: {
+            from: 'users',
+            localField: 'createdBy',
+            foreignField: '_id',
+            as: 'creatorInfo'
+          }
+        },
+        {
+          $group: {
+            _id: null,
+            totalQuotations: { $sum: 1 },
+            statuses: { $addToSet: '$status' },
+            currencies: { $addToSet: '$currency' },
+            customers: { $addToSet: '$customer.custId' },
+            creators: { 
+              $addToSet: { $arrayElemAt: ['$creatorInfo.name', 0] }
+            },
+            // Date ranges
+            minCreatedDate: { $min: '$createdAt' },
+            maxCreatedDate: { $max: '$createdAt' },
+            minValidTillDate: { $min: '$validTill' },
+            maxValidTillDate: { $max: '$validTill' }
+          }
+        }
+      ]);
+
+      const summary = summaryData[0] || {
+        totalQuotations: 0,
+        statuses: [],
+        currencies: [],
+        customers: [],
+        creators: [],
+        minCreatedDate: null,
+        maxCreatedDate: null,
+        minValidTillDate: null,
+        maxValidTillDate: null
+      };
+
+      const result = {
+        quotations,
+        pagination: {
+          page: parseInt(page),
+          limit: limitNum,
+          total,
+          pages: Math.ceil(total / limitNum),
+          hasNext: page < Math.ceil(total / limitNum),
+          hasPrev: page > 1
+        },
+        summary: {
+          appliedFilters: {
+            search: search || null,
+            status: status || null,
+            customerId: customerId || null,
+            createdBy: createdBy || null,
+            currency: currency || null,
+            dateFrom: dateFrom || null,
+            dateTo: dateTo || null,
+            validTillFrom: validTillFrom || null,
+            validTillTo: validTillTo || null
+          },
+          availableFilters: {
+            // Basic filters
+            statuses: summary.statuses ? summary.statuses.sort() : [],
+            currencies: summary.currencies ? summary.currencies.sort() : [],
+            customers: summary.customers ? summary.customers.sort() : [],
+            creators: summary.creators ? summary.creators.sort() : [],
+            
+            // Date ranges for date pickers
+            dateRanges: {
+              created: {
+                min: summary.minCreatedDate,
+                max: summary.maxCreatedDate
+              },
+              validTill: {
+                min: summary.minValidTillDate,
+                max: summary.maxValidTillDate
+              }
+            },
+            
+            // Counts for each filter option
+            counts: {
+              totalQuotations: summary.totalQuotations || 0
+            },
+            
+            // Sort options
+            sortOptions: [
+              { value: '-createdAt', label: 'Newest First' },
+              { value: 'createdAt', label: 'Oldest First' },
+              { value: '-updatedAt', label: 'Recently Updated' },
+              { value: 'updatedAt', label: 'Least Recently Updated' },
+              { value: '-totalAmount', label: 'Highest Amount' },
+              { value: 'totalAmount', label: 'Lowest Amount' },
+              { value: 'quotationNumber', label: 'Quotation Number A-Z' },
+              { value: '-quotationNumber', label: 'Quotation Number Z-A' }
+            ],
+            
+            // Pagination options
+            pageSizes: [5, 10, 25, 50, 100]
+          },
+          sortBy: sort,
+          totalResults: total,
+          showingResults: `${quotations.length} of ${total} quotations`
+        }
+      };
+
+      return result;
+    } catch (error) {
+      throw createError.internal('Failed to fetch quotations');
+    }
+  }
 
   /**
    * Get review quotations (review, approved, confirmed)
@@ -650,7 +830,40 @@ quotationData.deliveryAddress = customer.address
       // Convert quotation to plain object and add company
       const quotationObj = quotation.toObject();
       if (company) {
-        quotationObj.company = company;
+        // Create company object with bank details based on quotation currency
+        const companyObj = company.toObject();
+        
+        // Add bank details for the specific currency, default to AED
+        if (quotationObj.currency && companyObj.bankDetails && companyObj.bankDetails.get) {
+          const currencyBankDetails = companyObj.bankDetails.get(quotationObj.currency);
+          if (currencyBankDetails) {
+            // Use the quotation's currency bank details directly
+            companyObj.bankDetails = currencyBankDetails;
+          } else {
+            // If no bank details for this currency, use AED as default
+            const aedBankDetails = companyObj.bankDetails.get('AED');
+            if (aedBankDetails) {
+              companyObj.bankDetails = aedBankDetails;
+            } else {
+              // If no AED bank details available, remove bankDetails
+              delete companyObj.bankDetails;
+            }
+          }
+        } else {
+          // If no currency or bankDetails, try to use AED as default
+          if (companyObj.bankDetails && companyObj.bankDetails.get) {
+            const aedBankDetails = companyObj.bankDetails.get('AED');
+            if (aedBankDetails) {
+              companyObj.bankDetails = aedBankDetails;
+            } else {
+              delete companyObj.bankDetails;
+            }
+          } else {
+            delete companyObj.bankDetails;
+          }
+        }
+        
+        quotationObj.company = companyObj;
       }
 
       return quotationObj;
@@ -1057,6 +1270,21 @@ quotationData.deliveryAddress = customer.address
     }
   }
 
+  /**
+   * Get approved quotations
+   * @param {Object} filters - Filter options
+   * @param {Object} options - Query options
+   * @returns {Promise<Object>} Paginated quotations
+   */
+  async getApprovedOrders(filters = {}, options = {}) {
+    try {
+
+      return await this.getApprovedQuotations(filters, options);
+    } catch (error) {
+      console.error('Error getting approved orders:', error);
+      throw createError.internal('Failed to get approved orders');
+    }
+  }
 
   /**
    * Get all quotations with filtering, sorting, and pagination
@@ -1262,9 +1490,9 @@ quotationData.deliveryAddress = customer.address
         throw createError.notFound('Quotation not found');
       }
 
-      // Check if quotation is accepted
-      if (quotation.status !== 'accepted') {
-        throw createError.badRequest('Only accepted quotations can be updated');
+      // Check if quotation is accepted or in review
+      if (quotation.status !== 'accepted' && quotation.status !== 'review') {
+        throw createError.badRequest('Only accepted or review quotations can be updated');
       }
 
       // Use all fields from payload (except system fields)
@@ -1323,6 +1551,7 @@ quotationData.deliveryAddress = customer.address
 
         // Add calculated amounts to update data
         filteredUpdateData.subtotal = subtotal;
+        filteredUpdateData.totalDiscount = discountAmount;
         filteredUpdateData.discountAmount = discountAmount;
         filteredUpdateData.additionalExpenseAmount = additionalExpenseAmount;
         filteredUpdateData.totalAmount = totalAmount;
@@ -1850,7 +2079,14 @@ quotationData.deliveryAddress = customer.address
       throw error;
     }
   }
-}
+
+  /**
+   * Get approved quotations
+   * @param {Object} filters - Filters
+   * @param {Object} options - Options
+   * @returns {Promise<Object>} Approved quotations
+   */
+  }
 
 
 module.exports = new QuotationService();

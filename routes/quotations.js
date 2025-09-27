@@ -64,6 +64,11 @@ router.get('/review-orders',
   quotationController.getReviewOrders
 );
 
+router.get('/approved-orders', 
+  hasPermission('quotation:read'),
+  quotationController.getApprovedOrders
+);
+
 // Update accepted quotation (must be before /:id route)
 router.put('/accepted-orders/:id', 
   hasPermission('quotation:update'),

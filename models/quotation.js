@@ -181,7 +181,7 @@ const quotationSchema = new mongoose.Schema({
   },
   status: {
     type: String,
-    enum: ['draft', 'sent', 'viewed', 'accepted', 'rejected', 'expired', 'converted','review','approved','confirmed'],
+    enum: ['draft', 'sent', 'viewed', 'accepted', 'rejected', 'expired', 'converted','review','approved','confirmed','completed'],
     default: 'draft',
     required: true,
     index: true
@@ -190,7 +190,7 @@ const quotationSchema = new mongoose.Schema({
     type: [{
       status: {
         type: String,
-        enum: ['draft', 'sent', 'viewed', 'accepted', 'rejected', 'expired', 'converted','review','approved','confirmed'],
+        enum: ['draft', 'sent', 'viewed', 'accepted', 'rejected', 'expired', 'converted','review','approved','confirmed','completed'],
         required: true,
       },
       date: {

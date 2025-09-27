@@ -145,11 +145,6 @@ const customerInvoiceSchema = new mongoose.Schema({
       min: 0
     }
   },
-  additionalExpenseAmount: {
-    type: Number,
-    default: 0,
-    min: 0
-  },
   totalAmount: {
     type: Number,
     required: true,
@@ -179,8 +174,31 @@ const customerInvoiceSchema = new mongoose.Schema({
   },
   status: {
     type: String,
-    enum: ['draft', 'sent', 'viewed', 'paid', 'overdue', 'cancelled', 'refunded'],
+    enum: ['draft', 'sent', 'viewed', 'paid', 'overdue', 'cancelled'],
     default: 'draft'
+  },
+  customerPayment: {
+    paymentStatus: {
+    type: String,
+    enum: ['partially_paid', 'fully_paid', 'due'],
+    default: 'due'
+    },
+    paymentAmount: {
+    type: Number,
+    default: 0
+    },
+    paymentDate: {
+    type: Date,
+    },
+    paymentMethod: {
+    type: String,
+    enum: ['cash', 'bank_transfer', 'cheque', 'other'],
+    default: 'cash'
+    },
+    paymentNotes: {
+    type: String,
+    default: ''
+    }
   },
   statusHistory: [{
     status: {

@@ -1,4 +1,5 @@
 const CustomerInvoice = require('../models/customerInvoice');
+const Quotation = require('../models/quotation');
 const { createError } = require('../utils/apiError');
 
 class CustomerInvoiceService {
@@ -200,6 +201,67 @@ class CustomerInvoiceService {
     } catch (error) {
       console.error('Error getting all invoices:', error);
       throw createError.internal('Failed to fetch invoices');
+    }
+  }
+
+  /**
+   * Create a new customer invoice from quotation
+   * @param {Object} invoiceData - Invoice data
+   * @param {string} createdBy - User ID who created the invoice
+   * @returns {Promise<Object>} Created invoice
+   */
+  async createCustomerInvoice(invoiceData, createdBy) {
+    try {
+      // Validate quotation exists and is approved
+      const quotation = await Quotation.findById(invoiceData.quotationId);
+      if (!quotation) {
+        throw createError.notFound('Quotation not found');
+      }
+
+      if (quotation.status !== 'approved') {
+        throw createError.badRequest('Only approved quotations can be converted to invoices');
+      }
+
+      // Create invoice data with quotation reference
+      const invoicePayload = {
+        ...invoiceData,
+        quotationNumber: quotation.quotationNumber,
+        createdBy,
+        status: 'pending'
+      };
+
+      // Create the invoice
+      const invoice = new CustomerInvoice(invoicePayload);
+      await invoice.save();
+
+      // Update quotation status to confirmed
+      quotation.status = 'confirmed';
+      quotation.statusHistory.push({
+        status: 'confirmed',
+        updatedBy: createdBy,
+        updatedAt: new Date(),
+        notes: 'Invoice created from this quotation'
+      });
+      quotation.updatedBy = createdBy;
+      await quotation.save();
+
+      // Populate the created invoice
+      const populatedInvoice = await CustomerInvoice.findById(invoice._id)
+        .populate('createdBy', 'name email')
+        .populate('customer.userId', 'name email')
+        .populate('quotationId', 'quotationNumber title')
+        .populate('items.inventoryId', 'itemName description')
+        .populate('items.supplierId', 'name email custId')
+        .populate('statusHistory.updatedBy', 'name email')
+        .lean();
+
+      return populatedInvoice;
+    } catch (error) {
+      console.error('Error creating customer invoice:', error);
+      if (error.name === 'ValidationError') {
+        throw createError.badRequest('Invalid invoice data: ' + error.message);
+      }
+      throw error;
     }
   }
 }

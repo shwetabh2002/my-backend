@@ -81,11 +81,33 @@ const seedOwnerCompany = async () => {
       currency: 'AED',
       paymentTerms: 'Due on Receipt', // Your payment terms
       bankDetails: {
-        bankName: 'COMMERCIAL BANK OF DUBAI',
-        accountName: 'AL KARAMA MOTORS FZE',
-        accountNumber: '1002462883',
-        iban: 'AE490230000001002462883',
-        swiftCode: 'CBDUAEAD'
+        AED: {
+          bankName: 'Mashreq Bank',
+          accountName: 'PLANET SKY NEW AUTOMOBILE TRADING LLC',
+          accountNumber: '19101380548',
+          iban: 'AE520330000019101380548',
+          swiftCode: 'BOMLAEAD',
+          branch: 'Mashreq NEO [099]',
+          address: 'AL GHURAIR CITY, 339-C, AGC, AL RIQQA STREET, DUBAI – UAE'
+        },
+        USD: {
+          bankName: 'Mashreq Bank',
+          accountName: 'PLANET SKY NEW AUTOMOBILE TRADING LLC',
+          accountNumber: '19101380549',
+          iban: 'AE250330000019101380549',
+          swiftCode: 'BOMLAEAD',
+          branch: 'Mashreq NEO [099]',
+          address: 'AL GHURAIR CITY, 339-C, AGC, AL RIQQA STREET, DUBAI – UAE'
+        },
+        EURO: {
+          bankName: 'Mashreq Bank',
+          accountName: 'PLANET SKY NEW AUTOMOBILE TRADING LLC',
+          accountNumber: '19101380550',
+          iban: 'AE950330000019101380550',
+          swiftCode: 'BOMLAEAD',
+          branch: 'Mashreq NEO [099]',
+          address: 'AL GHURAIR CITY, 339-C, AGC, AL RIQQA STREET, DUBAI – UAE'
+        }
       },
       status: 'active',
       priority: 'critical',
@@ -107,6 +129,9 @@ const seedOwnerCompany = async () => {
           delivery: "Ex-Stock, Subject to prior Sale. After the full payment, the car will be delivered to the Dubai Showroom within 3 to 4 working days.",
           payment: "100% advance payment before delivery. By Cheque/Cash/ Swift Transfer.",
           validity: "3 working days from the date of issue"
+        },
+        invoice: {
+          paymentTerms:"This receipt voucher confirms the amount received as per the details mentioned above. \n All banking charges outside the UAE are to be borne by the buyer. \n Payments are acceptable through T/T, Cheques, or Cash only. \n Advance / down payments are strictly non-refundable under any circumstances. \n Delivery of the vehicle(s) will only be made upon receipt of full payment. \n The company shall not be held liable for delays caused by bank processing, shipping, or customs clearance."
         }
       },
       VAT:5

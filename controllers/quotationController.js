@@ -707,6 +707,38 @@ const getReviewOrders = async (req, res) => {
   }
 };
 
+/**
+ * Get approved quotations
+ * @param {Object} req - Express request object
+ * @param {Object} res - Express response object
+ */
+const getApprovedOrders = async (req, res) => {
+  try {
+    const filters = req.query;
+    const options = {
+      page: parseInt(req.query.page) || 1,
+      limit: parseInt(req.query.limit) || 10,
+      sort: req.query.sort || '-createdAt'
+    };
+
+    const result = await quotationService.getApprovedOrders(filters, options);
+
+    res.status(200).json({
+      success: true,
+      message: 'Approved Orders retrieved successfully',
+      data: result.quotations,
+      pagination: result.pagination,
+      summary: result.summary
+    });
+  } catch (error) {
+    res.status(error.statusCode || 500).json({
+      success: false,
+      message: error.message,
+      ...(process.env.NODE_ENV === 'development' && { stack: error.stack })
+    });
+  }
+};
+
 module.exports = {
   createQuotation,
   getQuotations,
@@ -732,5 +764,6 @@ module.exports = {
   sendReview,
   approveQuotation,
   confirmQuotation,
-  getReviewOrders
+  getReviewOrders,
+  getApprovedOrders
 };

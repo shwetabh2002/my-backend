@@ -32,6 +32,33 @@ const getAllInvoices = async (req, res) => {
   }
 };
 
+/**
+ * Create a new customer invoice
+ * @param {Object} req - Express request object
+ * @param {Object} res - Express response object
+ */
+const createCustomerInvoice = async (req, res) => {
+  try {
+    const invoiceData = req.body;
+    const createdBy = req.user.userId;
+
+    const invoice = await customerInvoiceService.createCustomerInvoice(invoiceData, createdBy);
+
+    res.status(201).json({
+      success: true,
+      message: 'Customer invoice created successfully',
+      data: invoice
+    });
+  } catch (error) {
+    res.status(error.statusCode || 500).json({
+      success: false,
+      message: error.message,
+      ...(process.env.NODE_ENV === 'development' && { stack: error.stack })
+    });
+  }
+};
+
 module.exports = {
-  getAllInvoices
+  getAllInvoices,
+  createCustomerInvoice
 };

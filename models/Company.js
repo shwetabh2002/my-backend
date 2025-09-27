@@ -207,32 +207,50 @@ const companySchema = new mongoose.Schema({
     type: String,
   },
   
-  // Bank Details
+  // Bank Details by Currency
   bankDetails: {
-    bankName: {
-      type: String,
-      trim: true,
-      maxlength: 200
-    },
-    accountName: {
-      type: String,
-      trim: true,
-      maxlength: 200
-    },
-    accountNumber: {
-      type: String,
-      trim: true,
-      maxlength: 50
-    },
-    iban: {
-      type: String,
-      trim: true,
-      maxlength: 50
-    },
-    swiftCode: {
-      type: String,
-      trim: true,
-      maxlength: 20
+    type: Map,
+    of: {
+      bankName: {
+        type: String,
+        required: true,
+        trim: true,
+        maxlength: 200
+      },
+      accountName: {
+        type: String,
+        required: true,
+        trim: true,
+        maxlength: 200
+      },
+      accountNumber: {
+        type: String,
+        required: true,
+        trim: true,
+        maxlength: 50
+      },
+      iban: {
+        type: String,
+        required: true,
+        trim: true,
+        maxlength: 50
+      },
+      swiftCode: {
+        type: String,
+        required: true,
+        trim: true,
+        maxlength: 20
+      },
+      branch: {
+        type: String,
+        trim: true,
+        maxlength: 100
+      },
+      address: {
+        type: String,
+        trim: true,
+        maxlength: 500
+      }
     }
   },
   
