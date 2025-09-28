@@ -1,5 +1,6 @@
 const CustomerInvoice = require('../models/customerInvoice');
 const Quotation = require('../models/quotation');
+const Inventory = require('../models/Inventory');
 const { createError } = require('../utils/apiError');
 const Company = require('../models/Company');
 
@@ -399,6 +400,720 @@ class CustomerInvoiceService {
         throw createError.badRequest('Invalid invoice ID format');
       }
       throw error;
+    }
+  }
+
+  /**
+   * Calculate sales analytics at code level for better performance
+   * @param {Array} invoices - Array of invoice documents
+   * @param {String} groupBy - Grouping type (day, week, month, year)
+   * @param {Number} limit - Limit for time series data
+   * @returns {Object} Calculated analytics
+   */
+  async calculateSalesAnalytics(invoices, groupBy = 'day', limit = 30) {
+    // Initialize currency-specific summary counters
+    const currencySummaries = new Map();
+    const allCurrencies = [...new Set(invoices.map(invoice => invoice.currency || 'AED'))];
+    
+    // Initialize summary for each currency
+    allCurrencies.forEach(currency => {
+      currencySummaries.set(currency, {
+        currency,
+        totalInvoices: 0,
+        totalAmount: 0,
+        totalVatAmount: 0,
+        totalSubtotal: 0,
+        totalDiscount: 0,
+        totalMoreExpense: 0,
+        totalAdditionalExpense: 0,
+        totalCostAmount: 0,
+        totalSellingAmount: 0,
+        totalNetRevenue: 0,
+        totalProfitAmount: 0,
+        totalProfitWithoutVAT: 0,
+        totalProfitWithVAT: 0,
+        paidInvoices: 0,
+        pendingInvoices: 0,
+        paidAmount: 0,
+        pendingAmount: 0,
+        paidProfitAmount: 0,
+        paidProfitWithoutVAT: 0,
+        paidProfitWithVAT: 0,
+        pendingProfitAmount: 0,
+        pendingProfitWithoutVAT: 0,
+        pendingProfitWithVAT: 0,
+        averageInvoiceValue: 0,
+        averageProfitPerInvoice: 0,
+        averageProfitPerInvoiceWithoutVAT: 0,
+        averageProfitPerInvoiceWithVAT: 0,
+        minInvoiceValue: 0,
+        maxInvoiceValue: 0,
+        minProfitPerInvoice: 0,
+        minProfitPerInvoiceWithoutVAT: 0,
+        minProfitPerInvoiceWithVAT: 0,
+        maxProfitPerInvoice: 0,
+        maxProfitPerInvoiceWithoutVAT: 0,
+        maxProfitPerInvoiceWithVAT: 0
+      });
+    });
+
+    // Overall summary (aggregated across all currencies)
+    let overallSummary = {
+      totalInvoices: 0,
+      totalAmount: 0,
+      totalVatAmount: 0,
+      totalSubtotal: 0,
+      totalDiscount: 0,
+      totalMoreExpense: 0,
+      totalAdditionalExpense: 0,
+      totalCostAmount: 0,
+      totalSellingAmount: 0,
+      totalNetRevenue: 0,
+      totalProfitAmount: 0,
+      totalProfitWithoutVAT: 0,
+      totalProfitWithVAT: 0,
+      paidInvoices: 0,
+      pendingInvoices: 0,
+      paidAmount: 0,
+      pendingAmount: 0,
+      paidProfitAmount: 0,
+      paidProfitWithoutVAT: 0,
+      paidProfitWithVAT: 0,
+      pendingProfitAmount: 0,
+      pendingProfitWithoutVAT: 0,
+      pendingProfitWithVAT: 0,
+      averageInvoiceValue: 0,
+      averageProfitPerInvoice: 0,
+      averageProfitPerInvoiceWithoutVAT: 0,
+      averageProfitPerInvoiceWithVAT: 0,
+      minInvoiceValue: 0,
+      maxInvoiceValue: 0,
+      minProfitPerInvoice: 0,
+      minProfitPerInvoiceWithoutVAT: 0,
+      minProfitPerInvoiceWithVAT: 0,
+      maxProfitPerInvoice: 0,
+      maxProfitPerInvoiceWithoutVAT: 0,
+      maxProfitPerInvoiceWithVAT: 0
+    };
+
+    // Time series data - currency-specific
+    const timeSeriesMap = new Map();
+    const profitValues = [];
+    const profitValuesWithoutVAT = [];
+    const profitValuesWithVAT = [];
+    
+    // Currency-specific time series
+    const currencyTimeSeriesMap = new Map();
+
+    // Fetch current cost prices from inventory for all unique itemIds
+    const itemIds = [...new Set(invoices.flatMap(invoice => 
+      invoice.items.map(item => item.itemId).filter(id => id)
+    ))];
+    
+    const inventoryItems = await Inventory.find({ 
+      _id: { $in: itemIds } 
+    }).select('_id costPrice').lean();
+    
+    // Create a map for quick cost price lookup
+    const costPriceMap = new Map();
+    inventoryItems.forEach(item => {
+      costPriceMap.set(item._id.toString(), item.costPrice || 0);
+    });
+
+    // Process each invoice
+    invoices.forEach(invoice => {
+      const currency = invoice.currency || 'AED';
+      const currencySummary = currencySummaries.get(currency);
+      
+      // Calculate item costs using current inventory cost prices
+      const itemCosts = invoice.items.reduce((sum, item) => {
+        const currentCostPrice = item.itemId ? 
+          (costPriceMap.get(item.itemId.toString()) || 0) : 
+          (item.costPrice || 0);
+        return sum + (currentCostPrice * (item.quantity || 0));
+      }, 0);
+      const itemSellingAmount = invoice.items.reduce((sum, item) => 
+        sum + (item.totalPrice || 0), 0);
+
+      // Calculate additional expenses
+      const additionalExpenseAmount = invoice.additionalExpenses?.amount || 0;
+      const moreExpenseAmount = invoice.moreExpense?.amount || 0;
+      const totalDiscount = invoice.totalDiscount || 0;
+      const vatAmount = invoice.vatAmount || 0;
+
+      // Calculate net revenue and costs
+      const netRevenue = itemSellingAmount - totalDiscount;
+      const totalCosts = itemCosts + additionalExpenseAmount + moreExpenseAmount;
+      
+      // Calculate profits
+      const profitWithoutVAT = netRevenue - totalCosts;
+      const profitWithVAT = profitWithoutVAT - vatAmount;
+
+      // Update currency-specific summary
+      currencySummary.totalInvoices++;
+      currencySummary.totalAmount += invoice.totalAmount || 0;
+      currencySummary.totalVatAmount += vatAmount;
+      currencySummary.totalSubtotal += invoice.subtotal || 0;
+      currencySummary.totalDiscount += totalDiscount;
+      currencySummary.totalMoreExpense += moreExpenseAmount;
+      currencySummary.totalAdditionalExpense += additionalExpenseAmount;
+      currencySummary.totalCostAmount += totalCosts;
+      currencySummary.totalSellingAmount += itemSellingAmount;
+      currencySummary.totalNetRevenue += netRevenue;
+      currencySummary.totalProfitAmount += profitWithoutVAT;
+      currencySummary.totalProfitWithoutVAT += profitWithoutVAT;
+      currencySummary.totalProfitWithVAT += profitWithVAT;
+
+      // Status-based calculations for currency
+      if (invoice.status === 'paid') {
+        currencySummary.paidInvoices++;
+        currencySummary.paidAmount += invoice.totalAmount || 0;
+        currencySummary.paidProfitAmount += profitWithoutVAT;
+        currencySummary.paidProfitWithoutVAT += profitWithoutVAT;
+        currencySummary.paidProfitWithVAT += profitWithVAT;
+      } else if (['sent', 'draft'].includes(invoice.status)) {
+        currencySummary.pendingInvoices++;
+        currencySummary.pendingAmount += invoice.totalAmount || 0;
+        currencySummary.pendingProfitAmount += profitWithoutVAT;
+        currencySummary.pendingProfitWithoutVAT += profitWithoutVAT;
+        currencySummary.pendingProfitWithVAT += profitWithVAT;
+      }
+
+      // Update overall summary (aggregated across all currencies)
+      overallSummary.totalInvoices++;
+      overallSummary.totalAmount += invoice.totalAmount || 0;
+      overallSummary.totalVatAmount += vatAmount;
+      overallSummary.totalSubtotal += invoice.subtotal || 0;
+      overallSummary.totalDiscount += totalDiscount;
+      overallSummary.totalMoreExpense += moreExpenseAmount;
+      overallSummary.totalAdditionalExpense += additionalExpenseAmount;
+      overallSummary.totalCostAmount += totalCosts;
+      overallSummary.totalSellingAmount += itemSellingAmount;
+      overallSummary.totalNetRevenue += netRevenue;
+      overallSummary.totalProfitAmount += profitWithoutVAT;
+      overallSummary.totalProfitWithoutVAT += profitWithoutVAT;
+      overallSummary.totalProfitWithVAT += profitWithVAT;
+
+      // Status-based calculations for overall
+      if (invoice.status === 'paid') {
+        overallSummary.paidInvoices++;
+        overallSummary.paidAmount += invoice.totalAmount || 0;
+        overallSummary.paidProfitAmount += profitWithoutVAT;
+        overallSummary.paidProfitWithoutVAT += profitWithoutVAT;
+        overallSummary.paidProfitWithVAT += profitWithVAT;
+      } else if (['sent', 'draft'].includes(invoice.status)) {
+        overallSummary.pendingInvoices++;
+        overallSummary.pendingAmount += invoice.totalAmount || 0;
+        overallSummary.pendingProfitAmount += profitWithoutVAT;
+        overallSummary.pendingProfitWithoutVAT += profitWithoutVAT;
+        overallSummary.pendingProfitWithVAT += profitWithVAT;
+      }
+
+      // Store profit values for min/max calculations
+      profitValues.push(profitWithoutVAT);
+      profitValuesWithoutVAT.push(profitWithoutVAT);
+      profitValuesWithVAT.push(profitWithVAT);
+
+      // Time series grouping - overall and currency-specific
+      if (groupBy !== 'none') {
+        const date = new Date(invoice.createdAt);
+        const timeKey = this.getTimeKey(date, groupBy);
+        const currencyTimeKey = `${timeKey}_${currency}`;
+        
+        // Overall time series
+        if (!timeSeriesMap.has(timeKey)) {
+          timeSeriesMap.set(timeKey, {
+            _id: this.getTimeGroupingId(date, groupBy),
+            date: this.getDateField(date, groupBy),
+            totalInvoices: 0,
+            totalAmount: 0,
+            totalVatAmount: 0,
+            totalSubtotal: 0,
+            totalDiscount: 0,
+            totalMoreExpense: 0,
+            totalAdditionalExpense: 0,
+            totalCostAmount: 0,
+            totalSellingAmount: 0,
+            totalNetRevenue: 0,
+            totalProfitAmount: 0,
+            totalProfitWithoutVAT: 0,
+            totalProfitWithVAT: 0,
+            paidInvoices: 0,
+            pendingInvoices: 0,
+            paidAmount: 0,
+            pendingAmount: 0,
+            paidProfitAmount: 0,
+            paidProfitWithoutVAT: 0,
+            paidProfitWithVAT: 0,
+            pendingProfitAmount: 0,
+            pendingProfitWithoutVAT: 0,
+            pendingProfitWithVAT: 0,
+            averageInvoiceValue: 0,
+            averageProfitPerInvoice: 0,
+            averageProfitPerInvoiceWithoutVAT: 0,
+            averageProfitPerInvoiceWithVAT: 0
+          });
+        }
+
+        // Currency-specific time series
+        if (!currencyTimeSeriesMap.has(currencyTimeKey)) {
+          currencyTimeSeriesMap.set(currencyTimeKey, {
+            _id: this.getTimeGroupingId(date, groupBy),
+            date: this.getDateField(date, groupBy),
+            currency: currency,
+            totalInvoices: 0,
+            totalAmount: 0,
+            totalVatAmount: 0,
+            totalSubtotal: 0,
+            totalDiscount: 0,
+            totalMoreExpense: 0,
+            totalAdditionalExpense: 0,
+            totalCostAmount: 0,
+            totalSellingAmount: 0,
+            totalNetRevenue: 0,
+            totalProfitAmount: 0,
+            totalProfitWithoutVAT: 0,
+            totalProfitWithVAT: 0,
+            paidInvoices: 0,
+            pendingInvoices: 0,
+            paidAmount: 0,
+            pendingAmount: 0,
+            paidProfitAmount: 0,
+            paidProfitWithoutVAT: 0,
+            paidProfitWithVAT: 0,
+            pendingProfitAmount: 0,
+            pendingProfitWithoutVAT: 0,
+            pendingProfitWithVAT: 0,
+            averageInvoiceValue: 0,
+            averageProfitPerInvoice: 0,
+            averageProfitPerInvoiceWithoutVAT: 0,
+            averageProfitPerInvoiceWithVAT: 0
+          });
+        }
+
+        // Update overall time series
+        const timeData = timeSeriesMap.get(timeKey);
+        timeData.totalInvoices++;
+        timeData.totalAmount += invoice.totalAmount || 0;
+        timeData.totalVatAmount += vatAmount;
+        timeData.totalSubtotal += invoice.subtotal || 0;
+        timeData.totalDiscount += totalDiscount;
+        timeData.totalMoreExpense += moreExpenseAmount;
+        timeData.totalAdditionalExpense += additionalExpenseAmount;
+        timeData.totalCostAmount += totalCosts;
+        timeData.totalSellingAmount += itemSellingAmount;
+        timeData.totalNetRevenue += netRevenue;
+        timeData.totalProfitAmount += profitWithoutVAT;
+        timeData.totalProfitWithoutVAT += profitWithoutVAT;
+        timeData.totalProfitWithVAT += profitWithVAT;
+
+        if (invoice.status === 'paid') {
+          timeData.paidInvoices++;
+          timeData.paidAmount += invoice.totalAmount || 0;
+          timeData.paidProfitAmount += profitWithoutVAT;
+          timeData.paidProfitWithoutVAT += profitWithoutVAT;
+          timeData.paidProfitWithVAT += profitWithVAT;
+        } else if (['sent', 'draft'].includes(invoice.status)) {
+          timeData.pendingInvoices++;
+          timeData.pendingAmount += invoice.totalAmount || 0;
+          timeData.pendingProfitAmount += profitWithoutVAT;
+          timeData.pendingProfitWithoutVAT += profitWithoutVAT;
+          timeData.pendingProfitWithVAT += profitWithVAT;
+        }
+
+        // Update currency-specific time series
+        const currencyTimeData = currencyTimeSeriesMap.get(currencyTimeKey);
+        currencyTimeData.totalInvoices++;
+        currencyTimeData.totalAmount += invoice.totalAmount || 0;
+        currencyTimeData.totalVatAmount += vatAmount;
+        currencyTimeData.totalSubtotal += invoice.subtotal || 0;
+        currencyTimeData.totalDiscount += totalDiscount;
+        currencyTimeData.totalMoreExpense += moreExpenseAmount;
+        currencyTimeData.totalAdditionalExpense += additionalExpenseAmount;
+        currencyTimeData.totalCostAmount += totalCosts;
+        currencyTimeData.totalSellingAmount += itemSellingAmount;
+        currencyTimeData.totalNetRevenue += netRevenue;
+        currencyTimeData.totalProfitAmount += profitWithoutVAT;
+        currencyTimeData.totalProfitWithoutVAT += profitWithoutVAT;
+        currencyTimeData.totalProfitWithVAT += profitWithVAT;
+
+        if (invoice.status === 'paid') {
+          currencyTimeData.paidInvoices++;
+          currencyTimeData.paidAmount += invoice.totalAmount || 0;
+          currencyTimeData.paidProfitAmount += profitWithoutVAT;
+          currencyTimeData.paidProfitWithoutVAT += profitWithoutVAT;
+          currencyTimeData.paidProfitWithVAT += profitWithVAT;
+        } else if (['sent', 'draft'].includes(invoice.status)) {
+          currencyTimeData.pendingInvoices++;
+          currencyTimeData.pendingAmount += invoice.totalAmount || 0;
+          currencyTimeData.pendingProfitAmount += profitWithoutVAT;
+          currencyTimeData.pendingProfitWithoutVAT += profitWithoutVAT;
+          currencyTimeData.pendingProfitWithVAT += profitWithVAT;
+        }
+      }
+    });
+
+    // Calculate averages and min/max for overall summary
+    if (overallSummary.totalInvoices > 0) {
+      overallSummary.averageInvoiceValue = overallSummary.totalAmount / overallSummary.totalInvoices;
+      overallSummary.averageProfitPerInvoice = overallSummary.totalProfitAmount / overallSummary.totalInvoices;
+      overallSummary.averageProfitPerInvoiceWithoutVAT = overallSummary.totalProfitWithoutVAT / overallSummary.totalInvoices;
+      overallSummary.averageProfitPerInvoiceWithVAT = overallSummary.totalProfitWithVAT / overallSummary.totalInvoices;
+    }
+
+    if (profitValues.length > 0) {
+      overallSummary.minInvoiceValue = Math.min(...invoices.map(i => i.totalAmount || 0));
+      overallSummary.maxInvoiceValue = Math.max(...invoices.map(i => i.totalAmount || 0));
+      overallSummary.minProfitPerInvoice = Math.min(...profitValues);
+      overallSummary.minProfitPerInvoiceWithoutVAT = Math.min(...profitValuesWithoutVAT);
+      overallSummary.minProfitPerInvoiceWithVAT = Math.min(...profitValuesWithVAT);
+      overallSummary.maxProfitPerInvoice = Math.max(...profitValues);
+      overallSummary.maxProfitPerInvoiceWithoutVAT = Math.max(...profitValuesWithoutVAT);
+      overallSummary.maxProfitPerInvoiceWithVAT = Math.max(...profitValuesWithVAT);
+    }
+
+    // Calculate averages and min/max for each currency
+    currencySummaries.forEach(currencySummary => {
+      if (currencySummary.totalInvoices > 0) {
+        currencySummary.averageInvoiceValue = currencySummary.totalAmount / currencySummary.totalInvoices;
+        currencySummary.averageProfitPerInvoice = currencySummary.totalProfitAmount / currencySummary.totalInvoices;
+        currencySummary.averageProfitPerInvoiceWithoutVAT = currencySummary.totalProfitWithoutVAT / currencySummary.totalInvoices;
+        currencySummary.averageProfitPerInvoiceWithVAT = currencySummary.totalProfitWithVAT / currencySummary.totalInvoices;
+      }
+    });
+
+    // Process time series data - overall
+    const timeSeries = Array.from(timeSeriesMap.values())
+      .sort((a, b) => new Date(a.date) - new Date(b.date))
+      .slice(-limit);
+
+    // Process currency-specific time series data
+    const currencyTimeSeries = Array.from(currencyTimeSeriesMap.values())
+      .sort((a, b) => new Date(a.date) - new Date(b.date))
+      .slice(-limit);
+
+    // Calculate averages for overall time series
+    timeSeries.forEach(timeData => {
+      if (timeData.totalInvoices > 0) {
+        timeData.averageInvoiceValue = timeData.totalAmount / timeData.totalInvoices;
+        timeData.averageProfitPerInvoice = timeData.totalProfitAmount / timeData.totalInvoices;
+        timeData.averageProfitPerInvoiceWithoutVAT = timeData.totalProfitWithoutVAT / timeData.totalInvoices;
+        timeData.averageProfitPerInvoiceWithVAT = timeData.totalProfitWithVAT / timeData.totalInvoices;
+      }
+    });
+
+    // Calculate averages for currency-specific time series
+    currencyTimeSeries.forEach(timeData => {
+      if (timeData.totalInvoices > 0) {
+        timeData.averageInvoiceValue = timeData.totalAmount / timeData.totalInvoices;
+        timeData.averageProfitPerInvoice = timeData.totalProfitAmount / timeData.totalInvoices;
+        timeData.averageProfitPerInvoiceWithoutVAT = timeData.totalProfitWithoutVAT / timeData.totalInvoices;
+        timeData.averageProfitPerInvoiceWithVAT = timeData.totalProfitWithVAT / timeData.totalInvoices;
+      }
+    });
+
+    return {
+      summary: overallSummary,
+      currencySummaries: Array.from(currencySummaries.values()),
+      timeSeries: groupBy !== 'none' ? timeSeries : [],
+      currencyTimeSeries: groupBy !== 'none' ? currencyTimeSeries : []
+    };
+  }
+
+  /**
+   * Get time key for grouping
+   * @param {Date} date - Date to process
+   * @param {String} groupBy - Grouping type
+   * @returns {String} Time key
+   */
+  getTimeKey(date, groupBy) {
+    const year = date.getFullYear();
+    const month = date.getMonth() + 1;
+    const day = date.getDate();
+    const week = Math.ceil(day / 7);
+
+    switch (groupBy) {
+      case 'year': return `${year}`;
+      case 'month': return `${year}-${month.toString().padStart(2, '0')}`;
+      case 'week': return `${year}-W${week.toString().padStart(2, '0')}`;
+      case 'day': 
+      default: return `${year}-${month.toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}`;
+    }
+  }
+
+  /**
+   * Get time grouping ID object
+   * @param {Date} date - Date to process
+   * @param {String} groupBy - Grouping type
+   * @returns {Object} Time grouping ID
+   */
+  getTimeGroupingId(date, groupBy) {
+    const year = date.getFullYear();
+    const month = date.getMonth() + 1;
+    const day = date.getDate();
+    const week = Math.ceil(day / 7);
+
+    switch (groupBy) {
+      case 'year': return { year };
+      case 'month': return { year, month };
+      case 'week': return { year, week };
+      case 'day': 
+      default: return { year, month, day };
+    }
+  }
+
+  /**
+   * Get date field for time series
+   * @param {Date} date - Date to process
+   * @param {String} groupBy - Grouping type
+   * @returns {Date} Formatted date
+   */
+  getDateField(date, groupBy) {
+    const year = date.getFullYear();
+    const month = date.getMonth() + 1;
+    const day = date.getDate();
+
+    switch (groupBy) {
+      case 'year': return new Date(year, 0, 1);
+      case 'month': return new Date(year, month - 1, 1);
+      case 'week': return new Date(year, month - 1, Math.ceil(day / 7) * 7 - 6);
+      case 'day': 
+      default: return new Date(year, month - 1, day);
+    }
+  }
+
+  /**
+   * Get total sales analytics for dashboard
+   * @param {Object} filters - Filter criteria
+   * @param {Object} options - Query options (dateFrom, dateTo, groupBy, etc.)
+   * @returns {Promise<Object>} Sales analytics data
+   */
+  async getTotalSales(filters = {}, options = {}) {
+    try {
+      const {
+        dateFrom,
+        dateTo,
+        status,
+        customerId,
+        createdBy,
+        currency,
+        groupBy = 'day', // day, week, month, year
+        limit = 30
+      } = { ...filters, ...options };
+
+      // Build base query
+      const baseQuery = {};
+      
+      if (status) baseQuery.status = status;
+      if (customerId) baseQuery['customer.custId'] = customerId;
+      if (createdBy) baseQuery.createdBy = createdBy;
+      if (currency) baseQuery.currency = currency;
+
+      // Date range filters
+      if (dateFrom || dateTo) {
+        baseQuery.createdAt = {};
+        if (dateFrom) baseQuery.createdAt.$gte = new Date(dateFrom);
+        if (dateTo) baseQuery.createdAt.$lte = new Date(dateTo);
+      }
+
+      // Set default date range if not provided (last 30 days)
+      if (!dateFrom && !dateTo) {
+        const thirtyDaysAgo = new Date();
+        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+        baseQuery.createdAt = { $gte: thirtyDaysAgo };
+      }
+
+      // Fetch invoices with minimal data - much more efficient!
+      const invoices = await CustomerInvoice.find(baseQuery)
+        .select('totalAmount vatAmount subtotal totalDiscount moreExpense additionalExpenses items status createdAt currency customer createdBy')
+        .lean();
+
+      // Calculate analytics at code level - much faster and more maintainable
+      const analytics = await this.calculateSalesAnalytics(invoices, groupBy, limit);
+
+      // Get additional analytics
+      const additionalAnalytics = await this.getAdditionalSalesAnalytics(baseQuery);
+
+      return {
+        ...analytics,
+        additionalAnalytics,
+        filters: {
+          // Date filters
+          dateFrom: dateFrom ? new Date(dateFrom) : null,
+          dateTo: dateTo ? new Date(dateTo) : null,
+          dateRange: {
+            from: dateFrom ? new Date(dateFrom) : null,
+            to: dateTo ? new Date(dateTo) : null,
+            applied: !!(dateFrom || dateTo)
+          },
+          
+          // Status filters
+          status: {
+            value: status || null,
+            applied: !!status,
+            options: ['draft', 'sent', 'paid']
+          },
+          
+          // Customer filters
+          customerId: {
+            value: customerId || null,
+            applied: !!customerId,
+            options: additionalAnalytics.topCustomers ? additionalAnalytics.topCustomers.map(c => c._id) : [],
+            availableCustomers: additionalAnalytics.topCustomers ? additionalAnalytics.topCustomers.map(c => ({
+              customerId: c._id,
+              customerName: c.customerName,
+              totalAmount: c.totalAmount,
+              invoiceCount: c.invoiceCount
+            })) : []
+          },
+          
+          // User filters
+          createdBy: {
+            value: createdBy || null,
+            applied: !!createdBy,
+            options: [], // Will be populated from additional analytics if needed
+            availableEmployees: [] // Will be populated from additional analytics if needed
+          },
+          
+          // Currency filters
+          currency: {
+            value: currency || null,
+            applied: !!currency,
+            options: analytics.currencySummaries ? analytics.currencySummaries.map(c => c.currency) : [],
+            availableCurrencies: analytics.currencySummaries ? analytics.currencySummaries.map(c => ({
+              currency: c.currency,
+              totalInvoices: c.totalInvoices,
+              totalAmount: c.totalAmount,
+              totalProfit: c.totalProfitWithoutVAT
+            })) : []
+          },
+          
+          // Grouping options
+          groupBy: {
+            value: groupBy || 'day',
+            applied: true,
+            options: ['day', 'week', 'month', 'year', 'none']
+          },
+          
+          // Limit options
+          limit: {
+            value: limit || 30,
+            applied: true,
+            type: 'number'
+          },
+          
+          // Applied filters summary
+          appliedFilters: {
+            count: [dateFrom, dateTo, status, customerId, createdBy, currency].filter(Boolean).length,
+            list: [
+              ...(dateFrom || dateTo ? [`Date: ${dateFrom || 'Start'} to ${dateTo || 'End'}`] : []),
+              ...(status ? [`Status: ${status}`] : []),
+              ...(customerId ? [`Customer: ${customerId}`] : []),
+              ...(createdBy ? [`Created By: ${createdBy}`] : []),
+              ...(currency ? [`Currency: ${currency}`] : [])
+            ],
+            currencyBreakdown: analytics.currencySummaries ? analytics.currencySummaries.map(c => ({
+              currency: c.currency,
+              invoices: c.totalInvoices,
+              amount: c.totalAmount,
+              profit: c.totalProfitWithoutVAT
+            })) : []
+          },
+          
+          // Query metadata
+          query: {
+            totalInvoices: analytics.summary.totalInvoices,
+            hasData: analytics.summary.totalInvoices > 0,
+            timeSeriesPoints: analytics.timeSeries.length,
+            currencyTimeSeriesPoints: analytics.currencyTimeSeries.length,
+            currenciesFound: analytics.currencySummaries ? analytics.currencySummaries.length : 0,
+            currencyList: analytics.currencySummaries ? analytics.currencySummaries.map(c => c.currency) : []
+          }
+        }
+      };
+    } catch (error) {
+      console.error('Error getting total sales:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get additional sales analytics
+   * @param {Object} baseQuery - Base query for filtering
+   * @returns {Promise<Object>} Additional analytics data
+   */
+  async getAdditionalSalesAnalytics(baseQuery) {
+    try {
+      // Top customers by sales and profit
+      const topCustomers = await CustomerInvoice.aggregate([
+        { $match: baseQuery },
+        {
+          $group: {
+            _id: '$customer.custId',
+            customerName: { $first: '$customer.name' },
+            totalAmount: { $sum: '$totalAmount' },
+            invoiceCount: { $sum: 1 }
+          }
+        },
+        { $sort: { totalAmount: -1 } },
+        { $limit: 10 }
+      ]);
+
+      // Sales by status
+      const salesByStatus = await CustomerInvoice.aggregate([
+        { $match: baseQuery },
+        {
+          $group: {
+            _id: '$status',
+            count: { $sum: 1 },
+            totalAmount: { $sum: '$totalAmount' }
+          }
+        }
+      ]);
+
+      // Sales by currency
+      const salesByCurrency = await CustomerInvoice.aggregate([
+        { $match: baseQuery },
+        {
+          $group: {
+            _id: '$currency',
+            count: { $sum: 1 },
+            totalAmount: { $sum: '$totalAmount' }
+          }
+        }
+      ]);
+
+      // Monthly trend (last 12 months)
+      const monthlyTrend = await CustomerInvoice.aggregate([
+        { $match: baseQuery },
+        {
+          $group: {
+            _id: {
+              year: { $year: '$createdAt' },
+              month: { $month: '$createdAt' }
+            },
+            count: { $sum: 1 },
+            totalAmount: { $sum: '$totalAmount' }
+          }
+        },
+        { $sort: { '_id.year': 1, '_id.month': 1 } },
+        { $limit: 12 }
+      ]);
+
+      return {
+        topCustomers,
+        salesByStatus,
+        salesByCurrency,
+        monthlyTrend
+      };
+    } catch (error) {
+      console.error('Error getting additional analytics:', error);
+      return {
+        topCustomers: [],
+        salesByStatus: [],
+        salesByCurrency: [],
+        monthlyTrend: []
+      };
     }
   }
 }

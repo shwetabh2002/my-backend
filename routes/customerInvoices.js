@@ -14,6 +14,12 @@ router.get('/',
   customerInvoiceController.getAllInvoices
 );
 
+// Get total sales analytics for dashboard
+router.get('/analytics/sales', 
+  hasPermission('invoice:read'),
+  customerInvoiceController.getTotalSales
+);
+
 // Get invoice by ID
 router.get('/:id', 
   hasPermission('invoice:read'),

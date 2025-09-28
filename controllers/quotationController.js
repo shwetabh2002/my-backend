@@ -739,6 +739,31 @@ const getApprovedOrders = async (req, res) => {
   }
 };
 
+// Get quotation analytics for dashboard
+const getQuotationAnalytics = async (req, res) => {
+  try {
+    const filters = req.query;
+    const options = {
+      groupBy: req.query.groupBy || 'day',
+      limit: parseInt(req.query.limit) || 30
+    };
+
+    const analyticsData = await quotationService.getQuotationAnalytics(filters, options);
+
+    res.status(200).json({
+      success: true,
+      message: 'Quotation analytics retrieved successfully',
+      data: analyticsData
+    });
+  } catch (error) {
+    res.status(error.statusCode || 500).json({
+      success: false,
+      message: error.message,
+      stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
+    });
+  }
+};
+
 module.exports = {
   createQuotation,
   getQuotations,
@@ -765,5 +790,6 @@ module.exports = {
   approveQuotation,
   confirmQuotation,
   getReviewOrders,
-  getApprovedOrders
+  getApprovedOrders,
+  getQuotationAnalytics
 };

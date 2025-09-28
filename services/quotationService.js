@@ -1665,7 +1665,7 @@ quotationData.deliveryAddress = customer.address
         .populate('items.supplierId', 'name email custId')
         .populate('statusHistory.updatedBy', 'name email');
 
-        await this.updateInventoryForQuotation(updatedQuotation.items,'hold');
+        // await this.updateInventoryForQuotation(updatedQuotation.items,'hold');
 
       return updatedQuotation;
     } catch (error) {
@@ -2127,7 +2127,653 @@ quotationData.deliveryAddress = customer.address
    * @param {Object} options - Options
    * @returns {Promise<Object>} Approved quotations
    */
+  async getApprovedQuotations(filters = {}, options = {}) {
+    try {
+      const baseQuery = { status: 'approved' };
+      
+      // Apply additional filters
+      if (filters.customerId) baseQuery['customer.custId'] = filters.customerId;
+      if (filters.createdBy) baseQuery.createdBy = filters.createdBy;
+      if (filters.currency) baseQuery.currency = filters.currency;
+      
+      // Date range filters
+      if (filters.dateFrom || filters.dateTo) {
+        baseQuery.createdAt = {};
+        if (filters.dateFrom) baseQuery.createdAt.$gte = new Date(filters.dateFrom);
+        if (filters.dateTo) baseQuery.createdAt.$lte = new Date(filters.dateTo);
+      }
+
+      const quotations = await Quotation.find(baseQuery)
+        .populate('customer.userId', 'name email')
+        .populate('createdBy', 'name email')
+        .populate('items.supplierId', 'name email')
+        .sort(options.sort || '-createdAt')
+        .limit(options.limit || 10)
+        .skip(((options.page || 1) - 1) * (options.limit || 10));
+
+      const total = await Quotation.countDocuments(baseQuery);
+
+      return {
+        quotations,
+        pagination: {
+          page: options.page || 1,
+          limit: options.limit || 10,
+          total,
+          pages: Math.ceil(total / (options.limit || 10))
+        }
+      };
+    } catch (error) {
+      console.error('Error getting approved quotations:', error);
+      throw error;
+    }
   }
+
+  /**
+   * Calculate quotation analytics for dashboard
+   * @param {Array} quotations - Array of quotation documents
+   * @param {String} groupBy - Grouping type (day, week, month, year)
+   * @param {Number} limit - Limit for time series data
+   * @returns {Object} Calculated analytics
+   */
+  async calculateQuotationAnalytics(quotations, groupBy = 'day', limit = 30) {
+    // Initialize status-specific summary counters
+    const statusSummaries = new Map();
+    const allStatuses = [...new Set(quotations.map(quotation => quotation.status || 'draft'))];
+    
+    // Initialize summary for each status
+    allStatuses.forEach(status => {
+      statusSummaries.set(status, {
+        status,
+        totalQuotations: 0,
+        totalAmount: 0,
+        totalVatAmount: 0,
+        totalSubtotal: 0,
+        totalDiscount: 0,
+        totalAdditionalExpense: 0,
+        totalCostAmount: 0,
+        totalSellingAmount: 0,
+        totalNetRevenue: 0,
+        totalProfitAmount: 0,
+        totalProfitWithoutVAT: 0,
+        totalProfitWithVAT: 0,
+        averageQuotationValue: 0,
+        averageProfitPerQuotation: 0,
+        averageProfitPerQuotationWithoutVAT: 0,
+        averageProfitPerQuotationWithVAT: 0,
+        minQuotationValue: 0,
+        maxQuotationValue: 0,
+        minProfitPerQuotation: 0,
+        minProfitPerQuotationWithoutVAT: 0,
+        minProfitPerQuotationWithVAT: 0,
+        maxProfitPerQuotation: 0,
+        maxProfitPerQuotationWithoutVAT: 0,
+        maxProfitPerQuotationWithVAT: 0
+      });
+    });
+
+    // Overall summary (aggregated across all statuses)
+    let overallSummary = {
+      totalQuotations: 0,
+      totalAmount: 0,
+      totalVatAmount: 0,
+      totalSubtotal: 0,
+      totalDiscount: 0,
+      totalAdditionalExpense: 0,
+      totalCostAmount: 0,
+      totalSellingAmount: 0,
+      totalNetRevenue: 0,
+      totalProfitAmount: 0,
+      totalProfitWithoutVAT: 0,
+      totalProfitWithVAT: 0,
+      averageQuotationValue: 0,
+      averageProfitPerQuotation: 0,
+      averageProfitPerQuotationWithoutVAT: 0,
+      averageProfitPerQuotationWithVAT: 0,
+      minQuotationValue: 0,
+      maxQuotationValue: 0,
+      minProfitPerQuotation: 0,
+      minProfitPerQuotationWithoutVAT: 0,
+      minProfitPerQuotationWithVAT: 0,
+      maxProfitPerQuotation: 0,
+      maxProfitPerQuotationWithoutVAT: 0,
+      maxProfitPerQuotationWithVAT: 0
+    };
+
+    // Time series data - overall and status-specific
+    const timeSeriesMap = new Map();
+    const statusTimeSeriesMap = new Map();
+    const profitValues = [];
+    const profitValuesWithoutVAT = [];
+    const profitValuesWithVAT = [];
+
+    // Fetch current cost prices from inventory for all unique itemIds
+    const itemIds = [...new Set(quotations.flatMap(quotation => 
+      quotation.items.map(item => item.itemId).filter(id => id)
+    ))];
+    
+    const inventoryItems = await Inventory.find({ 
+      _id: { $in: itemIds } 
+    }).select('_id costPrice').lean();
+    
+    // Create a map for quick cost price lookup
+    const costPriceMap = new Map();
+    inventoryItems.forEach(item => {
+      costPriceMap.set(item._id.toString(), item.costPrice || 0);
+    });
+
+    // Process each quotation
+    quotations.forEach(quotation => {
+      const status = quotation.status || 'draft';
+      const statusSummary = statusSummaries.get(status);
+      
+      // Calculate item costs using current inventory cost prices
+      const itemCosts = quotation.items.reduce((sum, item) => {
+        const currentCostPrice = item.itemId ? 
+          (costPriceMap.get(item.itemId.toString()) || 0) : 
+          (item.costPrice || 0);
+        return sum + (currentCostPrice * (item.quantity || 0));
+      }, 0);
+      const itemSellingAmount = quotation.items.reduce((sum, item) => 
+        sum + (item.totalPrice || 0), 0);
+
+      // Calculate additional expenses
+      const additionalExpenseAmount = quotation.additionalExpenses?.amount || 0;
+      const totalDiscount = quotation.totalDiscount || 0;
+      const vatAmount = quotation.vatAmount || 0;
+
+      // Calculate net revenue and costs
+      const netRevenue = itemSellingAmount - totalDiscount;
+      const totalCosts = itemCosts + additionalExpenseAmount;
+      
+      // Calculate profits
+      const profitWithoutVAT = netRevenue - totalCosts;
+      const profitWithVAT = profitWithoutVAT - vatAmount;
+
+      // Update status-specific summary
+      statusSummary.totalQuotations++;
+      statusSummary.totalAmount += quotation.totalAmount || 0;
+      statusSummary.totalVatAmount += vatAmount;
+      statusSummary.totalSubtotal += quotation.subtotal || 0;
+      statusSummary.totalDiscount += totalDiscount;
+      statusSummary.totalAdditionalExpense += additionalExpenseAmount;
+      statusSummary.totalCostAmount += totalCosts;
+      statusSummary.totalSellingAmount += itemSellingAmount;
+      statusSummary.totalNetRevenue += netRevenue;
+      statusSummary.totalProfitAmount += profitWithoutVAT;
+      statusSummary.totalProfitWithoutVAT += profitWithoutVAT;
+      statusSummary.totalProfitWithVAT += profitWithVAT;
+
+      // Update overall summary
+      overallSummary.totalQuotations++;
+      overallSummary.totalAmount += quotation.totalAmount || 0;
+      overallSummary.totalVatAmount += vatAmount;
+      overallSummary.totalSubtotal += quotation.subtotal || 0;
+      overallSummary.totalDiscount += totalDiscount;
+      overallSummary.totalAdditionalExpense += additionalExpenseAmount;
+      overallSummary.totalCostAmount += totalCosts;
+      overallSummary.totalSellingAmount += itemSellingAmount;
+      overallSummary.totalNetRevenue += netRevenue;
+      overallSummary.totalProfitAmount += profitWithoutVAT;
+      overallSummary.totalProfitWithoutVAT += profitWithoutVAT;
+      overallSummary.totalProfitWithVAT += profitWithVAT;
+
+      // Store profit values for min/max calculations
+      profitValues.push(profitWithoutVAT);
+      profitValuesWithoutVAT.push(profitWithoutVAT);
+      profitValuesWithVAT.push(profitWithVAT);
+
+      // Time series grouping - overall and status-specific
+      if (groupBy !== 'none') {
+        const date = new Date(quotation.createdAt);
+        const timeKey = this.getTimeKey(date, groupBy);
+        const statusTimeKey = `${timeKey}_${status}`;
+        
+        // Overall time series
+        if (!timeSeriesMap.has(timeKey)) {
+          timeSeriesMap.set(timeKey, {
+            _id: this.getTimeGroupingId(date, groupBy),
+            date: this.getDateField(date, groupBy),
+            totalQuotations: 0,
+            totalAmount: 0,
+            totalVatAmount: 0,
+            totalSubtotal: 0,
+            totalDiscount: 0,
+            totalAdditionalExpense: 0,
+            totalCostAmount: 0,
+            totalSellingAmount: 0,
+            totalNetRevenue: 0,
+            totalProfitAmount: 0,
+            totalProfitWithoutVAT: 0,
+            totalProfitWithVAT: 0,
+            averageQuotationValue: 0,
+            averageProfitPerQuotation: 0,
+            averageProfitPerQuotationWithoutVAT: 0,
+            averageProfitPerQuotationWithVAT: 0
+          });
+        }
+
+        // Status-specific time series
+        if (!statusTimeSeriesMap.has(statusTimeKey)) {
+          statusTimeSeriesMap.set(statusTimeKey, {
+            _id: this.getTimeGroupingId(date, groupBy),
+            date: this.getDateField(date, groupBy),
+            status: status,
+            totalQuotations: 0,
+            totalAmount: 0,
+            totalVatAmount: 0,
+            totalSubtotal: 0,
+            totalDiscount: 0,
+            totalAdditionalExpense: 0,
+            totalCostAmount: 0,
+            totalSellingAmount: 0,
+            totalNetRevenue: 0,
+            totalProfitAmount: 0,
+            totalProfitWithoutVAT: 0,
+            totalProfitWithVAT: 0,
+            averageQuotationValue: 0,
+            averageProfitPerQuotation: 0,
+            averageProfitPerQuotationWithoutVAT: 0,
+            averageProfitPerQuotationWithVAT: 0
+          });
+        }
+
+        // Update overall time series
+        const timeData = timeSeriesMap.get(timeKey);
+        timeData.totalQuotations++;
+        timeData.totalAmount += quotation.totalAmount || 0;
+        timeData.totalVatAmount += vatAmount;
+        timeData.totalSubtotal += quotation.subtotal || 0;
+        timeData.totalDiscount += totalDiscount;
+        timeData.totalAdditionalExpense += additionalExpenseAmount;
+        timeData.totalCostAmount += totalCosts;
+        timeData.totalSellingAmount += itemSellingAmount;
+        timeData.totalNetRevenue += netRevenue;
+        timeData.totalProfitAmount += profitWithoutVAT;
+        timeData.totalProfitWithoutVAT += profitWithoutVAT;
+        timeData.totalProfitWithVAT += profitWithVAT;
+
+        // Update status-specific time series
+        const statusTimeData = statusTimeSeriesMap.get(statusTimeKey);
+        statusTimeData.totalQuotations++;
+        statusTimeData.totalAmount += quotation.totalAmount || 0;
+        statusTimeData.totalVatAmount += vatAmount;
+        statusTimeData.totalSubtotal += quotation.subtotal || 0;
+        statusTimeData.totalDiscount += totalDiscount;
+        statusTimeData.totalAdditionalExpense += additionalExpenseAmount;
+        statusTimeData.totalCostAmount += totalCosts;
+        statusTimeData.totalSellingAmount += itemSellingAmount;
+        statusTimeData.totalNetRevenue += netRevenue;
+        statusTimeData.totalProfitAmount += profitWithoutVAT;
+        statusTimeData.totalProfitWithoutVAT += profitWithoutVAT;
+        statusTimeData.totalProfitWithVAT += profitWithVAT;
+      }
+    });
+
+    // Calculate averages and min/max for overall summary
+    if (overallSummary.totalQuotations > 0) {
+      overallSummary.averageQuotationValue = overallSummary.totalAmount / overallSummary.totalQuotations;
+      overallSummary.averageProfitPerQuotation = overallSummary.totalProfitAmount / overallSummary.totalQuotations;
+      overallSummary.averageProfitPerQuotationWithoutVAT = overallSummary.totalProfitWithoutVAT / overallSummary.totalQuotations;
+      overallSummary.averageProfitPerQuotationWithVAT = overallSummary.totalProfitWithVAT / overallSummary.totalQuotations;
+    }
+
+    if (profitValues.length > 0) {
+      overallSummary.minQuotationValue = Math.min(...quotations.map(q => q.totalAmount || 0));
+      overallSummary.maxQuotationValue = Math.max(...quotations.map(q => q.totalAmount || 0));
+      overallSummary.minProfitPerQuotation = Math.min(...profitValues);
+      overallSummary.minProfitPerQuotationWithoutVAT = Math.min(...profitValuesWithoutVAT);
+      overallSummary.minProfitPerQuotationWithVAT = Math.min(...profitValuesWithVAT);
+      overallSummary.maxProfitPerQuotation = Math.max(...profitValues);
+      overallSummary.maxProfitPerQuotationWithoutVAT = Math.max(...profitValuesWithoutVAT);
+      overallSummary.maxProfitPerQuotationWithVAT = Math.max(...profitValuesWithVAT);
+    }
+
+    // Calculate averages and min/max for each status
+    statusSummaries.forEach(statusSummary => {
+      if (statusSummary.totalQuotations > 0) {
+        statusSummary.averageQuotationValue = statusSummary.totalAmount / statusSummary.totalQuotations;
+        statusSummary.averageProfitPerQuotation = statusSummary.totalProfitAmount / statusSummary.totalQuotations;
+        statusSummary.averageProfitPerQuotationWithoutVAT = statusSummary.totalProfitWithoutVAT / statusSummary.totalQuotations;
+        statusSummary.averageProfitPerQuotationWithVAT = statusSummary.totalProfitWithVAT / statusSummary.totalQuotations;
+      }
+    });
+
+    // Process time series data - overall
+    const timeSeries = Array.from(timeSeriesMap.values())
+      .sort((a, b) => new Date(a.date) - new Date(b.date))
+      .slice(-limit);
+
+    // Process status-specific time series data
+    const statusTimeSeries = Array.from(statusTimeSeriesMap.values())
+      .sort((a, b) => new Date(a.date) - new Date(b.date))
+      .slice(-limit);
+
+    // Calculate averages for overall time series
+    timeSeries.forEach(timeData => {
+      if (timeData.totalQuotations > 0) {
+        timeData.averageQuotationValue = timeData.totalAmount / timeData.totalQuotations;
+        timeData.averageProfitPerQuotation = timeData.totalProfitAmount / timeData.totalQuotations;
+        timeData.averageProfitPerQuotationWithoutVAT = timeData.totalProfitWithoutVAT / timeData.totalQuotations;
+        timeData.averageProfitPerQuotationWithVAT = timeData.totalProfitWithVAT / timeData.totalQuotations;
+      }
+    });
+
+    // Calculate averages for status-specific time series
+    statusTimeSeries.forEach(timeData => {
+      if (timeData.totalQuotations > 0) {
+        timeData.averageQuotationValue = timeData.totalAmount / timeData.totalQuotations;
+        timeData.averageProfitPerQuotation = timeData.totalProfitAmount / timeData.totalQuotations;
+        timeData.averageProfitPerQuotationWithoutVAT = timeData.totalProfitWithoutVAT / timeData.totalQuotations;
+        timeData.averageProfitPerQuotationWithVAT = timeData.totalProfitWithVAT / timeData.totalQuotations;
+      }
+    });
+
+    return {
+      summary: overallSummary,
+      statusSummaries: Array.from(statusSummaries.values()),
+      timeSeries: groupBy !== 'none' ? timeSeries : [],
+      statusTimeSeries: groupBy !== 'none' ? statusTimeSeries : []
+    };
+  }
+
+  /**
+   * Get additional quotation analytics
+   * @param {Object} baseQuery - Base query for filtering
+   * @returns {Promise<Object>} Additional analytics data
+   */
+  async getAdditionalQuotationAnalytics(baseQuery) {
+    try {
+      // Top customers by quotations and profit
+      const topCustomers = await Quotation.aggregate([
+        { $match: baseQuery },
+        {
+          $group: {
+            _id: '$customer.custId',
+            customerName: { $first: '$customer.name' },
+            totalAmount: { $sum: '$totalAmount' },
+            quotationCount: { $sum: 1 }
+          }
+        },
+        { $sort: { totalAmount: -1 } },
+        { $limit: 10 }
+      ]);
+
+      // Quotations by status
+      const quotationsByStatus = await Quotation.aggregate([
+        { $match: baseQuery },
+        {
+          $group: {
+            _id: '$status',
+            count: { $sum: 1 },
+            totalAmount: { $sum: '$totalAmount' }
+          }
+        }
+      ]);
+
+      // Quotations by currency
+      const quotationsByCurrency = await Quotation.aggregate([
+        { $match: baseQuery },
+        {
+          $group: {
+            _id: '$currency',
+            count: { $sum: 1 },
+            totalAmount: { $sum: '$totalAmount' }
+          }
+        }
+      ]);
+
+      // Monthly trend (last 12 months)
+      const monthlyTrend = await Quotation.aggregate([
+        { $match: baseQuery },
+        {
+          $group: {
+            _id: {
+              year: { $year: '$createdAt' },
+              month: { $month: '$createdAt' }
+            },
+            count: { $sum: 1 },
+            totalAmount: { $sum: '$totalAmount' }
+          }
+        },
+        { $sort: { '_id.year': 1, '_id.month': 1 } },
+        { $limit: 12 }
+      ]);
+
+      return {
+        topCustomers,
+        quotationsByStatus,
+        quotationsByCurrency,
+        monthlyTrend
+      };
+    } catch (error) {
+      console.error('Error getting additional quotation analytics:', error);
+      return {
+        topCustomers: [],
+        quotationsByStatus: [],
+        quotationsByCurrency: [],
+        monthlyTrend: []
+      };
+    }
+  }
+
+  /**
+   * Get time key for grouping
+   * @param {Date} date - Date to process
+   * @param {String} groupBy - Grouping type
+   * @returns {String} Time key
+   */
+  getTimeKey(date, groupBy) {
+    const year = date.getFullYear();
+    const month = date.getMonth() + 1;
+    const day = date.getDate();
+    const week = Math.ceil(day / 7);
+
+    switch (groupBy) {
+      case 'year': return `${year}`;
+      case 'month': return `${year}-${month.toString().padStart(2, '0')}`;
+      case 'week': return `${year}-W${week.toString().padStart(2, '0')}`;
+      case 'day':
+      default: return `${year}-${month.toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}`;
+    }
+  }
+
+  /**
+   * Get time grouping ID
+   * @param {Date} date - Date to process
+   * @param {String} groupBy - Grouping type
+   * @returns {Object} Grouping ID
+   */
+  getTimeGroupingId(date, groupBy) {
+    const year = date.getFullYear();
+    const month = date.getMonth() + 1;
+    const day = date.getDate();
+    const week = Math.ceil(day / 7);
+
+    switch (groupBy) {
+      case 'year': return { year };
+      case 'month': return { year, month };
+      case 'week': return { year, week };
+      case 'day':
+      default: return { year, month, day };
+    }
+  }
+
+  /**
+   * Get date field for grouping
+   * @param {Date} date - Date to process
+   * @param {String} groupBy - Grouping type
+   * @returns {Date} Date field
+   */
+  getDateField(date, groupBy) {
+    const year = date.getFullYear();
+    const month = date.getMonth() + 1;
+    const day = date.getDate();
+    const week = Math.ceil(day / 7);
+
+    switch (groupBy) {
+      case 'year': return new Date(year, 0, 1);
+      case 'month': return new Date(year, month - 1, 1);
+      case 'week': return new Date(year, month - 1, Math.ceil(day / 7) * 7 - 6);
+      case 'day': 
+      default: return new Date(year, month - 1, day);
+    }
+  }
+
+  /**
+   * Get quotation analytics for dashboard
+   * @param {Object} filters - Filter criteria
+   * @param {Object} options - Query options (dateFrom, dateTo, groupBy, etc.)
+   * @returns {Promise<Object>} Quotation analytics data
+   */
+  async getQuotationAnalytics(filters = {}, options = {}) {
+    try {
+      const {
+        dateFrom,
+        dateTo,
+        status,
+        customerId,
+        createdBy,
+        currency,
+        groupBy = 'day', // day, week, month, year
+        limit = 30
+      } = { ...filters, ...options };
+
+      // Build base query
+      const baseQuery = {};
+      
+      if (status) baseQuery.status = status;
+      if (customerId) baseQuery['customer.custId'] = customerId;
+      if (createdBy) baseQuery.createdBy = createdBy;
+      if (currency) baseQuery.currency = currency;
+
+      // Date range filters
+      if (dateFrom || dateTo) {
+        baseQuery.createdAt = {};
+        if (dateFrom) baseQuery.createdAt.$gte = new Date(dateFrom);
+        if (dateTo) baseQuery.createdAt.$lte = new Date(dateTo);
+      }
+
+      // Set default date range if not provided (last 30 days)
+      if (!dateFrom && !dateTo) {
+        const thirtyDaysAgo = new Date();
+        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+        baseQuery.createdAt = { $gte: thirtyDaysAgo };
+      }
+
+      // Fetch quotations with minimal data - much more efficient!
+      const quotations = await Quotation.find(baseQuery)
+        .select('totalAmount vatAmount subtotal totalDiscount additionalExpenses items status createdAt currency customer createdBy')
+        .lean();
+
+      // Calculate analytics at code level - much faster and more maintainable
+      const analytics = await this.calculateQuotationAnalytics(quotations, groupBy, limit);
+
+      // Get additional analytics
+      const additionalAnalytics = await this.getAdditionalQuotationAnalytics(baseQuery);
+
+      return {
+        ...analytics,
+        additionalAnalytics,
+        filters: {
+          // Date filters
+          dateFrom: dateFrom ? new Date(dateFrom) : null,
+          dateTo: dateTo ? new Date(dateTo) : null,
+          dateRange: {
+            from: dateFrom ? new Date(dateFrom) : null,
+            to: dateTo ? new Date(dateTo) : null,
+            applied: !!(dateFrom || dateTo)
+          },
+          
+          // Status filters
+          status: {
+            value: status || null,
+            applied: !!status,
+            options: ['draft', 'sent', 'viewed', 'accepted', 'rejected', 'expired', 'converted', 'review', 'approved', 'confirmed', 'completed']
+          },
+          
+          // Customer filters
+          customerId: {
+            value: customerId || null,
+            applied: !!customerId,
+            options: additionalAnalytics.topCustomers ? additionalAnalytics.topCustomers.map(c => c._id) : [],
+            availableCustomers: additionalAnalytics.topCustomers ? additionalAnalytics.topCustomers.map(c => ({
+              customerId: c._id,
+              customerName: c.customerName,
+              totalAmount: c.totalAmount,
+              quotationCount: c.quotationCount
+            })) : []
+          },
+          
+          // User filters
+          createdBy: {
+            value: createdBy || null,
+            applied: !!createdBy,
+            options: [],
+            availableEmployees: []
+          },
+          
+          // Currency filters
+          currency: {
+            value: currency || null,
+            applied: !!currency,
+            options: analytics.statusSummaries ? [...new Set(quotations.map(q => q.currency || 'AED'))] : [],
+            availableCurrencies: analytics.statusSummaries ? analytics.statusSummaries.map(s => ({
+              currency: s.currency || 'AED',
+              totalQuotations: s.totalQuotations,
+              totalAmount: s.totalAmount,
+              totalProfit: s.totalProfitWithoutVAT
+            })) : []
+          },
+          
+          // Grouping options
+          groupBy: {
+            value: groupBy || 'day',
+            applied: true,
+            options: ['day', 'week', 'month', 'year', 'none']
+          },
+          
+          // Limit options
+          limit: {
+            value: limit || 30,
+            applied: true,
+            type: 'number'
+          },
+          
+          // Applied filters summary
+          appliedFilters: {
+            count: [dateFrom, dateTo, status, customerId, createdBy, currency].filter(Boolean).length,
+            list: [
+              ...(dateFrom || dateTo ? [`Date: ${dateFrom || 'Start'} to ${dateTo || 'End'}`] : []),
+              ...(status ? [`Status: ${status}`] : []),
+              ...(customerId ? [`Customer: ${customerId}`] : []),
+              ...(createdBy ? [`Created By: ${createdBy}`] : []),
+              ...(currency ? [`Currency: ${currency}`] : [])
+            ],
+            statusBreakdown: analytics.statusSummaries ? analytics.statusSummaries.map(s => ({
+              status: s.status,
+              quotations: s.totalQuotations,
+              amount: s.totalAmount,
+              profit: s.totalProfitWithoutVAT
+            })) : []
+          },
+          
+          // Query metadata
+          query: {
+            totalQuotations: analytics.summary.totalQuotations,
+            hasData: analytics.summary.totalQuotations > 0,
+            timeSeriesPoints: analytics.timeSeries.length,
+            statusTimeSeriesPoints: analytics.statusTimeSeries.length,
+            statusesFound: analytics.statusSummaries ? analytics.statusSummaries.length : 0,
+            statusList: analytics.statusSummaries ? analytics.statusSummaries.map(s => s.status) : []
+          }
+        }
+      };
+    } catch (error) {
+      console.error('Error getting quotation analytics:', error);
+      throw error;
+    }
+  }
+}
 
 
 module.exports = new QuotationService();

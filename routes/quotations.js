@@ -76,6 +76,12 @@ router.put('/accepted-orders/:id',
   quotationController.updateAcceptedQuotation
 );
 
+// Get quotation analytics for dashboard (must be before /:id route)
+router.get('/analytics', 
+  hasPermission('quotation:read'),
+  quotationController.getQuotationAnalytics
+);
+
 router.get('/:id', 
   hasPermission('quotation:read'),
   quotationController.getQuotationById

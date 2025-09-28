@@ -82,8 +82,38 @@ const getInvoiceById = async (req, res) => {
   }
 };
 
+/**
+ * Get total sales analytics for dashboard
+ * @param {Object} req - Express request object
+ * @param {Object} res - Express response object
+ */
+const getTotalSales = async (req, res) => {
+  try {
+    const filters = req.query;
+    const options = {
+      groupBy: req.query.groupBy || 'day',
+      limit: parseInt(req.query.limit) || 30
+    };
+
+    const salesData = await customerInvoiceService.getTotalSales(filters, options);
+
+    res.status(200).json({
+      success: true,
+      message: 'Sales analytics retrieved successfully',
+      data: salesData
+    });
+  } catch (error) {
+    res.status(error.statusCode || 500).json({
+      success: false,
+      message: error.message,
+      ...(process.env.NODE_ENV === 'development' && { stack: error.stack })
+    });
+  }
+};
+
 module.exports = {
   getAllInvoices,
   createCustomerInvoice,
-  getInvoiceById
+  getInvoiceById,
+  getTotalSales
 };
