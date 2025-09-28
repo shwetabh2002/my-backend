@@ -1132,6 +1132,53 @@ quotationData.deliveryAddress = customer.address
     }
   }
 
+
+  /**
+   * Common function to restore inventory when quotation is rejected/cancelled
+   * @param {Array} items - Quotation items
+   */
+  async restoreInventoryForQuotation(items) {
+    try {
+      
+      for (const item of items) {
+        if (item.itemId) {
+          // Update inventory quantity
+          await Inventory.findByIdAndUpdate(
+            item.itemId,
+            { 
+              $inc: { quantity: item.quantity },
+              $set: { 
+                status: 'active',
+                updatedAt: new Date(),
+                inStock: true
+              }
+            }
+          );
+
+          // Update VIN numbers status to available
+          if (item.vinNumbers && item.vinNumbers.length > 0) {
+            for (const vin of item.vinNumbers) {
+              await Inventory.updateOne(
+                { 
+                  _id: item.itemId,
+                  'vinNumber.chasisNumber': vin.chasisNumber
+                },
+                { 
+                  $set: { 
+                    'vinNumber.$.status': 'active',
+                  }
+                }
+              );
+            }
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Error restoring inventory:', error);
+      throw createError.internal('Failed to restore inventory');
+    }
+  }
+
   /**
    * Reject quotation
    * @param {string} quotationId - Quotation ID
@@ -1158,8 +1205,8 @@ quotationData.deliveryAddress = customer.address
 
       await quotation.save();
 
-      // Free up inventory before rejecting
-      await this.freeUpInventoryForQuotation(quotation.items);
+      // Restore inventory when rejecting
+      await this.restoreInventoryForQuotation(quotation.items);
 
       return quotation;
     } catch (error) {
@@ -1511,15 +1558,18 @@ quotationData.deliveryAddress = customer.address
 
       // Recalculate amounts if discount or additionalExpenses are being updated
       if (updateData.discount !== undefined || updateData.additionalExpenses !== undefined) {
-        // Get current quotation items to calculate subtotal
-        const currentQuotation = await Quotation.findById(quotationId).select('items currency');
+        // Get current quotation to use existing subtotal and VAT
+        const currentQuotation = await Quotation.findById(quotationId).select('subtotal VAT additionalExpenses');
         
-        // Calculate subtotal from items
-        let subtotal = 0;
-        if (currentQuotation.items && currentQuotation.items.length > 0) {
-          subtotal = currentQuotation.items.reduce((sum, item) => {
-            return sum + (item.sellingPrice * item.quantity);
-          }, 0);
+        // Start with current subtotal
+        let subtotal = currentQuotation.subtotal;
+        
+        // Add additional expenses amount
+        let additionalExpenseAmount = 0;
+        if (updateData.additionalExpenses && updateData.additionalExpenses.amount) {
+          additionalExpenseAmount = updateData.additionalExpenses.amount;
+        } else if (currentQuotation.additionalExpenses && currentQuotation.additionalExpenses.amount) {
+          additionalExpenseAmount = currentQuotation.additionalExpenses.amount;
         }
 
         // Apply discount
@@ -1532,31 +1582,22 @@ quotationData.deliveryAddress = customer.address
           }
         }
 
-        // Calculate amount after discount
-        const amountAfterDiscount = subtotal - discountAmount;
+        // Calculate taxable amount (subtotal + additional expenses - discount)
+        const taxableAmount = subtotal + additionalExpenseAmount - discountAmount;
 
-        // Add additional expenses
-        let additionalExpenseAmount = 0;
-        if (updateData.additionalExpenses && updateData.additionalExpenses.amount) {
-          additionalExpenseAmount = updateData.additionalExpenses.amount;
-        }
+        // Calculate VAT on taxable amount (same as create quotation)
+        const vatRate = updateData.VAT || currentQuotation.VAT || 0;
+        const vatAmount = vatRate ? (taxableAmount * vatRate) / 100 : 0;
 
-        // Calculate total amount
-        const totalAmount = amountAfterDiscount + additionalExpenseAmount;
-
-        // Calculate VAT
-        const vatRate = updateData.VAT || quotation.VAT || 0;
-        const vatAmount = (totalAmount * vatRate) / 100;
-        const finalTotal = totalAmount + vatAmount;
+        // Calculate total amount (taxable amount + VAT)
+        const totalAmount = taxableAmount + vatAmount;
 
         // Add calculated amounts to update data
-        filteredUpdateData.subtotal = subtotal;
         filteredUpdateData.totalDiscount = discountAmount;
         filteredUpdateData.discountAmount = discountAmount;
-        filteredUpdateData.additionalExpenseAmount = additionalExpenseAmount;
         filteredUpdateData.totalAmount = totalAmount;
         filteredUpdateData.vatAmount = vatAmount;
-        filteredUpdateData.finalTotal = finalTotal;
+        filteredUpdateData.finalTotal = totalAmount;
       }
 
       // Update the quotation

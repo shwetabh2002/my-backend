@@ -1,9 +1,13 @@
 const mongoose = require('mongoose');
 
 const customerInvoiceSchema = new mongoose.Schema({
+  invoiceId: {
+    type: String,
+    unique: true,
+    trim: true
+  },
   invoiceNumber: {
     type: String,
-    required: true,
     unique: true,
     trim: true
   },
@@ -43,79 +47,126 @@ const customerInvoiceSchema = new mongoose.Schema({
       type: String,
       trim: true
     },
-    address: {
-      street: String,
-      city: String,
-      state: String,
-      country: String,
-      postalCode: String
-    }
-  },
-  company: {
-    name: {
-      type: String,
-      required: true,
-      trim: true
-    },
-    address: {
-      street: String,
-      city: String,
-      state: String,
-      country: String,
-      postalCode: String
-    },
-    phone: String,
-    email: String,
-    website: String,
-    taxId: String,
-    registrationNumber: String
+    address: String
   },
   items: [{
-    inventoryId: {
+    // Inventory fields (embedded directly) - same as quotation
+    itemId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Inventory',
       required: true
     },
-    itemName: {
+    supplierId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+    },
+    name: {
       type: String,
       required: true,
-      trim: true
+      trim: true,
+      maxlength: 200
     },
-    description: String,
-    quantity: {
-      type: Number,
+    type: {
+      type: String,
       required: true,
-      min: 1
+      enum: ['car', 'part']
     },
-    unitPrice: {
-      type: Number,
+    category: {
+      type: String,
       required: true,
-      min: 0
+      trim: true,
+      maxlength: 100
+    },
+    brand: {
+      type: String,
+      required: true,
+      trim: true,
+      maxlength: 100
+    },
+    model: {
+      type: String,
+      trim: true,
+      maxlength: 100
+    },
+    year: {
+      type: Number,
+      min: 1900,
+      max: new Date().getFullYear() + 1
+    },
+    color: {
+      type: String,
+      trim: true,
+      maxlength: 50
+    },
+    sku: {
+      type: String,
+      required: true,
+      trim: true,
+      uppercase: true
+    },
+    description: {
+      type: String,
+      trim: true,
+      maxlength: 1000
+    },
+    specifications: {
+      type: Map,
+      of: String
     },
     sellingPrice: {
       type: Number,
       required: true,
       min: 0
     },
+    condition: {
+      type: String,
+      enum: ['new', 'used', 'refurbished', 'damaged'],
+      default: 'new'
+    },
+    status: {
+      type: String,
+      enum: ['active', 'inactive', 'discontinued', 'out_of_stock'],
+      default: 'active'
+    },
+    dimensions: {
+      length: Number,
+      width: Number,
+      height: Number,
+      weight: Number
+    },
+    tags: [{
+      type: String,
+      trim: true,
+      lowercase: true
+    }],
+    
+    // VIN and Interior Color fields
+    vinNumbers: [{
+      status: {
+        type: String,
+        enum: ['active', 'inactive', 'hold', 'sold'],
+        default: 'active'
+      },
+      chasisNumber: {
+        type: String,
+        trim: true
+      }
+    }],
+    interiorColor: {
+      type: String,
+      trim: true
+    },
+    
+    // Invoice-specific fields
+    quantity: {
+      type: Number,
+      required: true,
+      min: 1
+    },
     totalPrice: {
       type: Number,
       required: true,
-      min: 0
-    },
-    supplierId: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'User'
-    },
-    supplierName: String,
-    vinNumber: String,
-    chassisNumber: String,
-    engineNumber: String,
-    year: Number,
-    make: String,
-    model: String,
-    color: String,
-    mileage: Number,
-    condition: String
+    }
   }],
   subtotal: {
     type: Number,
@@ -143,7 +194,23 @@ const customerInvoiceSchema = new mongoose.Schema({
       type: Number,
       default: 0,
       min: 0
-    }
+    },   
+     expenceType:{
+      type: String,
+      enum: ['shipping', 'accessories', 'Rta Fees',"COO Fees","Customs","Insurance","Other","none"],
+      required: false
+    },
+  },
+  moreExpense:{
+    description: {
+      type: String,
+      required: false,
+    },
+    amount: {
+      type: Number,
+      default: 0,
+      min: 0
+    },
   },
   totalAmount: {
     type: Number,
@@ -221,10 +288,16 @@ const customerInvoiceSchema = new mongoose.Schema({
   },
   dueDate: {
     type: Date,
-    required: true
+    default: function() {
+      return new Date(Date.now() + 1 * 24 * 60 * 60 * 1000); // 1 day default
+    }
   },
-  notes: String,
-  termsAndConditions: String,
+  notes: {
+    type: String,
+    required: false,
+    trim: true,
+    maxlength: 1000
+  },
   createdBy: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
@@ -241,6 +314,7 @@ const customerInvoiceSchema = new mongoose.Schema({
 });
 
 // Indexes
+customerInvoiceSchema.index({ invoiceId: 1 });
 customerInvoiceSchema.index({ invoiceNumber: 1 });
 customerInvoiceSchema.index({ quotationId: 1 });
 customerInvoiceSchema.index({ quotationNumber: 1 });
@@ -259,12 +333,19 @@ customerInvoiceSchema.virtual('isOverdue').get(function() {
   return this.status !== 'paid' && this.status !== 'cancelled' && this.status !== 'refunded' && new Date() > this.dueDate;
 });
 
-// Pre-save middleware to generate invoice number
+// Pre-save middleware to generate invoice ID and number
 customerInvoiceSchema.pre('save', async function(next) {
-  if (this.isNew && !this.invoiceNumber) {
+  if (this.isNew) {
     try {
       const count = await this.constructor.countDocuments();
-      this.invoiceNumber = `CI-${new Date().getFullYear()}-${String(count + 1).padStart(4, '0')}`;
+      const year = new Date().getFullYear();
+      const sequence = String(count + 1).padStart(4, '0');
+      
+      // Generate invoiceId (internal ID - format: CI-YYYY-XXXXXX)
+      this.invoiceId = `CI-${year}-${String(count + 1).padStart(6, '0')}`;
+      
+      // Generate invoiceNumber (display number - longer format, like quotationNumber)
+      this.invoiceNumber = `CI-${year}-${sequence}`;
     } catch (error) {
       next(error);
     }

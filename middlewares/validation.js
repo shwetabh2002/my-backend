@@ -1155,83 +1155,21 @@ const schemas = {
       'string.pattern.base': 'Invalid quotation ID format',
       'any.required': 'Quotation ID is required'
     }),
-    customer: Joi.object({
-      userId: Joi.string().pattern(/^[0-9a-fA-F]{24}$/).required(),
-      name: Joi.string().min(2).max(100).required(),
-      email: Joi.string().email().required(),
-      custId: Joi.string().pattern(/^CUS-\d{3}$/).required(),
-      phone: Joi.string().min(10).max(20).required(),
-      address: Joi.object({
-        street: Joi.string().required(),
-        city: Joi.string().required(),
-        state: Joi.string().required(),
-        postalCode: Joi.string().required(),
-        country: Joi.string().required()
-      }).required()
-    }).required(),
-    company: Joi.object({
-      name: Joi.string().required(),
-      email: Joi.string().email().required(),
-      phone: Joi.string().required(),
-      address: Joi.object({
-        street: Joi.string().required(),
-        city: Joi.string().required(),
-        state: Joi.string().required(),
-        postalCode: Joi.string().required(),
-        country: Joi.string().required()
-      }).required()
-    }).required(),
-    items: Joi.array().items(
-      Joi.object({
-        itemId: Joi.string().pattern(/^[0-9a-fA-F]{24}$/).required(),
-        name: Joi.string().required(),
-        type: Joi.string().required(),
-        category: Joi.string().required(),
-        brand: Joi.string().required(),
-        model: Joi.string().required(),
-        year: Joi.number().integer().min(1900).max(new Date().getFullYear() + 1).required(),
-        color: Joi.string().required(),
-        sku: Joi.string().required(),
-        description: Joi.string().required(),
-        specifications: Joi.object().required(),
-        sellingPrice: Joi.number().min(0).required(),
-        condition: Joi.string().valid('new', 'used', 'refurbished').required(),
-        status: Joi.string().valid('active', 'inactive', 'sold', 'reserved').required(),
-        dimensions: Joi.object({
-          length: Joi.number().min(0),
-          width: Joi.number().min(0),
-          height: Joi.number().min(0),
-          weight: Joi.number().min(0)
-        }),
-        tags: Joi.array().items(Joi.string()),
-        quantity: Joi.number().integer().min(1).required(),
-        vinNumbers: Joi.array().items(
-          Joi.object({
-            status: Joi.string().valid('active', 'hold', 'sold').required(),
-            chasisNumber: Joi.string().required()
-          })
-        ),
-        interiorColor: Joi.string(),
-        supplierId: Joi.string().pattern(/^[0-9a-fA-F]{24}$/)
-      })
-    ).min(1).required(),
-    subtotal: Joi.number().min(0).required(),
-    totalDiscount: Joi.number().min(0).default(0),
-    VAT: Joi.number().min(0).max(100).required(),
-    vatAmount: Joi.number().min(0).required(),
-    finalTotal: Joi.number().min(0).required(),
-    currency: Joi.string().length(3).uppercase().required(),
-    dueDate: Joi.date().min('now').required(),
-    notes: Joi.string().max(2000),
-    termsAndConditions: Joi.string().max(2000),
-    additionalExpenses: Joi.array().items(
-      Joi.object({
-        expenceType: Joi.string().required(),
-        description: Joi.string(),
-        amount: Joi.number().min(0).required(),
-        currency: Joi.string().length(3).uppercase().required()
-      })
-    )
+    notes: Joi.string().allow('').optional().max(1000),
+    moreExpense: Joi.object({
+      description: Joi.string().allow('').optional().default(''),
+      amount: Joi.number().min(0).default(0)
+    }).default({ description: '', amount: 0 }),
+    customerPayment: Joi.object({
+      paymentAmount: Joi.number().min(0).default(0),
+      paymentMethod: Joi.string().valid('cash', 'bank_transfer', 'cheque', 'other').default('cash'),
+      paymentNotes: Joi.string().max(500).default(''),
+      paymentDate: Joi.date()
+    }).default({
+      paymentAmount: 0,
+      paymentMethod: 'cash',
+      paymentNotes: ''
+    })
   })
 };
 

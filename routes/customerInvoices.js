@@ -14,6 +14,12 @@ router.get('/',
   customerInvoiceController.getAllInvoices
 );
 
+// Get invoice by ID
+router.get('/:id', 
+  hasPermission('invoice:read'),
+  customerInvoiceController.getInvoiceById
+);
+
 // Create customer invoice
 router.post('/', 
   hasPermission('invoice:create'),

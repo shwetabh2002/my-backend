@@ -52,7 +52,16 @@ const seedRoles = async () => {
           'quotation:create',
           'quotation:read',
           'quotation:update',
-          'quotation:delete'
+          'quotation:delete',
+          'supplier:create',
+          'supplier:read',
+          'supplier:update',
+          'supplier:delete',
+          'invoice:create',
+          'invoice:read',
+          'invoice:update',
+          'invoice:delete'
+
         ],
         description: 'Full system access with all permissions'
       },
@@ -67,7 +76,15 @@ const seedRoles = async () => {
           'company:update',
           'quotation:create',
           'quotation:read',
-          'quotation:update'
+          'quotation:update',
+          'supplier:create',
+          'supplier:update',
+          'supplier:read',
+          'supplier:delete',
+          'invoice:create',
+          'invoice:read',
+          'invoice:update',
+          'invoice:delete'
         ],
         description: 'Employee access with limited permissions'
       },

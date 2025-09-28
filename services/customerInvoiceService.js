@@ -1,6 +1,8 @@
 const CustomerInvoice = require('../models/customerInvoice');
 const Quotation = require('../models/quotation');
 const { createError } = require('../utils/apiError');
+const Company = require('../models/Company');
+
 
 class CustomerInvoiceService {
   /**
@@ -68,7 +70,7 @@ class CustomerInvoiceService {
         .populate('updatedBy', 'name email')
         .populate('customer.userId', 'name email')
         .populate('quotationId', 'quotationNumber title')
-        .populate('items.inventoryId', 'itemName description')
+        .populate('items.itemId', 'itemName description')
         .populate('items.supplierId', 'name email custId')
         .populate('statusHistory.updatedBy', 'name email')
         .sort(sort)
@@ -206,7 +208,7 @@ class CustomerInvoiceService {
 
   /**
    * Create a new customer invoice from quotation
-   * @param {Object} invoiceData - Invoice data
+   * @param {Object} invoiceData - Invoice data (only fields not in quotation)
    * @param {string} createdBy - User ID who created the invoice
    * @returns {Promise<Object>} Created invoice
    */
@@ -222,13 +224,79 @@ class CustomerInvoiceService {
         throw createError.badRequest('Only approved quotations can be converted to invoices');
       }
 
-      // Create invoice data with quotation reference
+      // Build invoice payload from quotation data
       const invoicePayload = {
-        ...invoiceData,
+        // From quotation
+        quotationId: quotation._id,
         quotationNumber: quotation.quotationNumber,
+        customer: quotation.customer,
+        items: quotation.items,
+        subtotal: quotation.subtotal,
+        discount: quotation.totalDiscount,
+        discountType: quotation.discountType,
+        additionalExpenses: quotation.additionalExpenses,
+        VAT: quotation.VAT,
+        vatAmount: quotation.vatAmount,
+        totalAmount: quotation.totalAmount,
+        currency: quotation.currency,
+        notes: quotation.notes,
+        
+        // From payload (fields not in quotation)
+        moreExpense: invoiceData.moreExpense || { description: '', amount: 0 },
+        dueDate: invoiceData.dueDate ? new Date(invoiceData.dueDate) : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // Default to 30 days from now
+        notes: invoiceData.notes || quotation.notes,
+        customerPayment: invoiceData.customerPayment || {
+          paymentStatus: 'due',
+          paymentAmount: 0,
+          paymentMethod: 'cash',
+          paymentNotes: ''
+        },
+        
+        // System fields
         createdBy,
-        status: 'pending'
+        status: 'draft'
       };
+
+      // Process more expenses - ensure proper structure
+      if (invoicePayload.moreExpense) {
+        invoicePayload.moreExpense = {
+          description: invoicePayload.moreExpense.description || '',
+          amount: invoicePayload.moreExpense.amount || 0
+        };
+      } else {
+        invoicePayload.moreExpense = {
+          description: '',
+          amount: 0
+        };
+      }
+
+      // Add moreExpense to the total (additionalExpenses already calculated in quotation)
+      const moreExpenseAmount = invoicePayload.moreExpense.amount || 0;
+      const finalTotal = quotation.totalAmount + moreExpenseAmount;
+
+      // Update final total with moreExpense
+      invoicePayload.finalTotal = finalTotal;
+
+      // Set payment status and root status based on payment amount
+      const paymentAmount = invoicePayload.customerPayment.paymentAmount || 0;
+      const totalAmount = invoicePayload.finalTotal;
+
+      if (paymentAmount >= totalAmount) {
+        // Fully paid
+        invoicePayload.customerPayment.paymentStatus = 'fully_paid';
+        invoicePayload.status = 'paid';
+      } else if (paymentAmount > 0) {
+        // Partially paid
+        invoicePayload.customerPayment.paymentStatus = 'partially_paid';
+        invoicePayload.status = 'sent';
+      } else {
+        // Not paid
+        invoicePayload.customerPayment.paymentStatus = 'due';
+        invoicePayload.status = 'draft';
+      }
+
+      // Debug: Log the payload before creating invoice
+      console.log('Invoice payload:', JSON.stringify(invoicePayload, null, 2));
 
       // Create the invoice
       const invoice = new CustomerInvoice(invoicePayload);
@@ -250,7 +318,7 @@ class CustomerInvoiceService {
         .populate('createdBy', 'name email')
         .populate('customer.userId', 'name email')
         .populate('quotationId', 'quotationNumber title')
-        .populate('items.inventoryId', 'itemName description')
+        .populate('items.itemId', 'itemName description')
         .populate('items.supplierId', 'name email custId')
         .populate('statusHistory.updatedBy', 'name email')
         .lean();
@@ -260,6 +328,75 @@ class CustomerInvoiceService {
       console.error('Error creating customer invoice:', error);
       if (error.name === 'ValidationError') {
         throw createError.badRequest('Invalid invoice data: ' + error.message);
+      }
+      throw error;
+    }
+  }
+
+  /**
+   * Get invoice by ID with company details
+   * @param {string} invoiceId - Invoice ID
+   * @returns {Promise<Object>} Invoice details with company information
+   */
+  async getInvoiceById(invoiceId) {
+    try {
+      const invoice = await CustomerInvoice.findById(invoiceId)
+        .populate('createdBy', 'name email')
+        .populate('updatedBy', 'name email')
+        .populate('customer.userId', 'name email')
+        .populate('items.supplierId', 'name email custId')
+        .populate('quotationId', 'quotationNumber status');
+
+      if (!invoice) {
+        throw createError.notFound('Invoice not found');
+      }
+
+      // Fetch company data and add to response
+      const company = await Company.findOne();
+      
+      // Convert invoice to plain object and add company
+      const invoiceObj = invoice.toObject();
+      if (company) {
+        // Create company object with bank details based on invoice currency
+        const companyObj = company.toObject();
+        
+        // Add bank details for the specific currency, default to AED
+        if (invoiceObj.currency && companyObj.bankDetails && companyObj.bankDetails.get) {
+          const currencyBankDetails = companyObj.bankDetails.get(invoiceObj.currency);
+          if (currencyBankDetails) {
+            // Use the invoice's currency bank details directly
+            companyObj.bankDetails = currencyBankDetails;
+          } else {
+            // If no bank details for this currency, use AED as default
+            const aedBankDetails = companyObj.bankDetails.get('AED');
+            if (aedBankDetails) {
+              companyObj.bankDetails = aedBankDetails;
+            } else {
+              // If no AED bank details available, remove bankDetails
+              delete companyObj.bankDetails;
+            }
+          }
+        } else {
+          // If no currency or bankDetails, try to use AED as default
+          if (companyObj.bankDetails && companyObj.bankDetails.get) {
+            const aedBankDetails = companyObj.bankDetails.get('AED');
+            if (aedBankDetails) {
+              companyObj.bankDetails = aedBankDetails;
+            } else {
+              delete companyObj.bankDetails;
+            }
+          } else {
+            delete companyObj.bankDetails;
+          }
+        }
+        
+        invoiceObj.company = companyObj;
+      }
+
+      return invoiceObj;
+    } catch (error) {
+      if (error.name === 'CastError') {
+        throw createError.badRequest('Invalid invoice ID format');
       }
       throw error;
     }

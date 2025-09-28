@@ -40,7 +40,7 @@ const getAllInvoices = async (req, res) => {
 const createCustomerInvoice = async (req, res) => {
   try {
     const invoiceData = req.body;
-    const createdBy = req.user.userId;
+    const createdBy = req.user.id;
 
     const invoice = await customerInvoiceService.createCustomerInvoice(invoiceData, createdBy);
 
@@ -58,7 +58,32 @@ const createCustomerInvoice = async (req, res) => {
   }
 };
 
+/**
+ * Get invoice by ID
+ * @param {Object} req - Express request object
+ * @param {Object} res - Express response object
+ */
+const getInvoiceById = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const invoice = await customerInvoiceService.getInvoiceById(id);
+
+    res.status(200).json({
+      success: true,
+      message: 'Invoice retrieved successfully',
+      data: invoice
+    });
+  } catch (error) {
+    res.status(error.statusCode || 500).json({
+      success: false,
+      message: error.message,
+      ...(process.env.NODE_ENV === 'development' && { stack: error.stack })
+    });
+  }
+};
+
 module.exports = {
   getAllInvoices,
-  createCustomerInvoice
+  createCustomerInvoice,
+  getInvoiceById
 };

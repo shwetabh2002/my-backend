@@ -204,7 +204,7 @@ class InventoryService {
         // console.log('Total VIN numbers:', item.vinNumber.length);
         // console.log('All VIN numbers:', item.vinNumber);
         
-        const holdVinNumbers = item.vinNumber.filter(vin => vin.status === 'hold');
+        const holdVinNumbers = item.vinNumber.filter(vin => vin.status !== 'active');
         // console.log('Hold VIN numbers found:', holdVinNumbers.length);
         // console.log('Hold VIN numbers:', holdVinNumbers);
         
