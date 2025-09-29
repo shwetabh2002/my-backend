@@ -158,11 +158,16 @@ const updateQuotation = async (req, res) => {
 const deleteQuotation = async (req, res) => {
   try {
     const { id } = req.params;
-    const result = await quotationService.deleteQuotation(id);
+    const result = await quotationService.deleteQuotationById(id);
 
     res.status(200).json({
       success: true,
-      message: result.message
+      message: result.message,
+      data: {
+        quotationId: result.quotationId,
+        quotationNumber: result.quotationNumber,
+        deletedAt: result.deletedAt
+      }
     });
   } catch (error) {
     res.status(error.statusCode || 500).json({

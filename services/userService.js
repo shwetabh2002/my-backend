@@ -624,6 +624,70 @@ class UserService {
       throw createError.internal('Failed to delete supplier');
     }
   }
+
+  /**
+   * Delete customer by ID (only if no active quotations exist)
+   * @param {string} customerId - Customer ID
+   * @returns {Promise<Object>} Deletion result
+   */
+  async deleteCustomer(customerId) {
+    try {
+      if (!customerId) {
+        throw createError.badRequest('Customer ID is required');
+      }
+
+      // First, find the customer to verify they exist and are a customer
+      const customer = await User.findById(customerId);
+      
+      if (!customer) {
+        throw createError.notFound('Customer not found');
+      }
+
+      if (customer.type !== 'customer') {
+        throw createError.badRequest('User is not a customer');
+      }
+
+      // Check if customer has any quotations with status not equal to 'rejected'
+      const activeQuotations = await Quotation.find({
+        'customer.userId': customerId,
+        status: { $ne: 'rejected' }
+      }).select('quotationId quotationNumber status');
+
+      if (activeQuotations.length > 0) {
+        const quotationDetails = activeQuotations.map(q => ({
+          quotationId: q.quotationId,
+          quotationNumber: q.quotationNumber,
+          status: q.status
+        }));
+
+        return {
+          success: false,
+          message: `Cannot delete customer. Customer has ${activeQuotations.length} active quotation(s) that must be rejected first.`,
+          data: {
+            activeQuotations: quotationDetails
+          }
+        };
+      }
+
+      // Delete the customer
+      await User.findByIdAndDelete(customerId);
+
+      return {
+        message: 'Customer deleted successfully',
+        customerId: customer.custId,
+        customerName: customer.name,
+        deletedAt: new Date()
+      };
+    } catch (error) {
+      if (error.statusCode) {
+        throw error;
+      }
+      if (error.name === 'CastError') {
+        throw createError.badRequest('Invalid customer ID format');
+      }
+      throw error;
+    }
+  }
 }
 
 module.exports = new UserService();

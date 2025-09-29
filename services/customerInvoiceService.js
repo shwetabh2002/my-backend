@@ -3,6 +3,7 @@ const Quotation = require('../models/quotation');
 const Inventory = require('../models/Inventory');
 const { createError } = require('../utils/apiError');
 const Company = require('../models/Company');
+const quotationService = require('./quotationService');
 
 
 class CustomerInvoiceService {
@@ -324,7 +325,9 @@ class CustomerInvoiceService {
         .populate('statusHistory.updatedBy', 'name email')
         .lean();
 
-      return populatedInvoice;
+        await quotationService.updateInventoryStatusForQuotation(populatedInvoice.items,'sold');
+
+        return populatedInvoice;
     } catch (error) {
       console.error('Error creating customer invoice:', error);
       if (error.name === 'ValidationError') {

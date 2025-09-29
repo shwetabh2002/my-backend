@@ -368,6 +368,29 @@ class UserController {
       data: result
     });
   });
+
+  // Delete customer (admin only)
+  deleteCustomer = asyncHandler(async (req, res) => {
+    const customerId = req.params.id;
+    const currentUser = req.user;
+
+    const result = await userService.deleteCustomer(customerId);
+
+    // Check if deletion was blocked due to active quotations
+    if (result.success === false) {
+      return res.status(400).json(result);
+    }
+
+    res.status(200).json({
+      success: true,
+      message: result.message,
+      data: {
+        customerId: result.customerId,
+        customerName: result.customerName,
+        deletedAt: result.deletedAt
+      }
+    });
+  });
 }
 
 module.exports = new UserController();

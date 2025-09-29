@@ -229,7 +229,7 @@ class InventoryService {
         item.vinNumber = item.vinNumber.map(vin => {
           // console.log('Processing VIN:', vin.chasisNumber, 'Status:', vin.status);
           
-          if (vin.status === 'hold' && quotations.length > 0) {
+          if (vin.status !== 'active' && quotations.length > 0) {
             // Find the quotation that contains this chassis number
             const quotation = quotations.find(quotation => 
               quotation.items.some(item => 

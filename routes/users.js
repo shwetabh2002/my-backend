@@ -104,6 +104,11 @@ router.delete('/supplier/:id',
   userController.deleteSupplier
 );
 
+router.delete('/customer/:id', 
+  isAdmin, 
+  userController.deleteCustomer
+);
+
 // Routes with resource-specific access control
 router.get('/:id', 
   canAccessOwnResource('user', 'read'), 
