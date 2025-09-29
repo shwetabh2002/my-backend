@@ -688,6 +688,301 @@ class UserService {
       throw error;
     }
   }
+
+  /**
+   * Create employee (admin only)
+   * @param {Object} employeeData - Employee data
+   * @param {string} currentUserId - Current user ID (admin)
+   * @returns {Promise<Object>} Created employee
+   */
+  async createEmployee(employeeData, currentUserId) {
+    try {
+      const { name, email, password, phone, roleType, address, status = 'active',countryCode } = employeeData;
+
+      // Check if email already exists
+      const existingUser = await User.findOne({ email });
+      if (existingUser) {
+        throw createError.conflict('Email already exists');
+      }
+
+      // Find the role by name
+      const role = await Role.findOne({ name: roleType, isActive: true });
+      if (!role) {
+        throw createError.badRequest(`Role '${roleType}' not found`);
+      }
+
+      // Determine user type based on role
+      const userType = 'employee'; // Both SALES and FINANCE are employee types
+
+      // Create employee user
+      const employee = new User({
+        name,
+        email,
+        password,
+        phone,
+        type: userType,
+        status,
+        roleIds: [role._id],
+        address: address || '',
+        countryCode: countryCode || '+971', // Default country code
+        createdBy: currentUserId
+      });
+
+      await employee.save();
+
+      // Populate role information
+      await employee.populate('roleIds', 'name permissions');
+
+      // Return employee without password
+      const employeeResponse = employee.toObject();
+      delete employeeResponse.password;
+      delete employeeResponse.refreshToken;
+
+      return {
+        message: 'Employee created successfully',
+        data: employeeResponse
+      };
+    } catch (error) {
+      if (error.statusCode) {
+        throw error;
+      }
+      if (error.name === 'ValidationError') {
+        const validationErrors = Object.values(error.errors).map(err => err.message);
+        throw createError.badRequest(`Validation failed: ${validationErrors.join(', ')}`);
+      }
+      throw error;
+    }
+  }
+
+  /**
+   * Get all employees (EMPLOYEE and FINANCE roles)
+   * @param {Object} query - Query parameters
+   * @returns {Promise<Object>} Paginated employees
+   */
+  async getEmployees(query = {}) {
+    try {
+      const { page = 1, limit = 10, search, status, roleType, sortBy = 'createdAt', sortOrder = 'desc' } = query;
+
+      // Build filter object for employees
+      const filter = {
+        type: 'employee',
+        roleIds: { $exists: true, $ne: [] }
+      };
+
+      // Add search filter
+      if (search) {
+        filter.$or = [
+          { name: { $regex: search, $options: 'i' } },
+          { email: { $regex: search, $options: 'i' } },
+          { phone: { $regex: search, $options: 'i' } }
+        ];
+      }
+
+      // Add status filter
+      if (status) {
+        filter.status = status;
+      }
+
+      // Calculate pagination
+      const skip = (page - 1) * limit;
+      const limitNum = parseInt(limit);
+
+      // Build sort object
+      const sort = {};
+      sort[sortBy] = sortOrder === 'desc' ? -1 : 1;
+
+      // Get total count
+      const total = await User.countDocuments(filter);
+
+      // Get employees with role information
+      const employees = await User.find(filter)
+        .populate('roleIds', 'name permissions description')
+        .sort(sort)
+        .skip(skip)
+        .limit(limitNum)
+        .lean();
+
+      // Remove passwords from response
+      const employeesWithoutPasswords = employees.map(employee => {
+        const { password, refreshToken, ...employeeWithoutPassword } = employee;
+        return employeeWithoutPassword;
+      });
+
+      // Get role type filter if specified
+      let filteredEmployees = employeesWithoutPasswords;
+      if (roleType) {
+        filteredEmployees = employeesWithoutPasswords.filter(employee => 
+          employee.roleIds.some(role => role.name === roleType)
+        );
+      }
+
+      // Get summary data
+      const summaryData = await User.aggregate([
+        { $match: { type: 'employee', roleIds: { $exists: true, $ne: [] } } },
+        { $unwind: '$roleIds' },
+        {
+          $lookup: {
+            from: 'roles',
+            localField: 'roleIds',
+            foreignField: '_id',
+            as: 'roleInfo'
+          }
+        },
+        { $unwind: '$roleInfo' },
+        {
+          $group: {
+            _id: null,
+            totalEmployees: { $sum: 1 },
+            statuses: { $addToSet: '$status' },
+            roles: { $addToSet: '$roleInfo.name' },
+            minCreatedDate: { $min: '$createdAt' },
+            maxCreatedDate: { $max: '$createdAt' }
+          }
+        }
+      ]);
+
+      const summary = summaryData[0] || {
+        totalEmployees: 0,
+        statuses: [],
+        roles: [],
+        minCreatedDate: null,
+        maxCreatedDate: null
+      };
+
+      return {
+        employees: filteredEmployees,
+        pagination: {
+          page: parseInt(page),
+          limit: limitNum,
+          total: filteredEmployees.length,
+          pages: Math.ceil(filteredEmployees.length / limitNum),
+          hasNext: page < Math.ceil(filteredEmployees.length / limitNum),
+          hasPrev: page > 1
+        },
+        summary: {
+          totalEmployees: summary.totalEmployees,
+          statuses: summary.statuses.sort(),
+          roles: summary.roles.sort(),
+          dateRange: {
+            min: summary.minCreatedDate,
+            max: summary.maxCreatedDate
+          }
+        }
+      };
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  /**
+   * Get employee by ID
+   * @param {string} employeeId - Employee ID
+   * @returns {Promise<Object>} Employee data
+   */
+  async getEmployeeById(employeeId) {
+    try {
+      if (!employeeId) {
+        throw createError.badRequest('Employee ID is required');
+      }
+
+      // Find employee by ID
+      const employee = await User.findById(employeeId)
+        .populate('roleIds', 'name permissions description')
+        .lean();
+
+      if (!employee) {
+        throw createError.notFound('Employee not found');
+      }
+
+      // Check if user is an employee
+      if (employee.type !== 'employee') {
+        throw createError.badRequest('User is not an employee');
+      }
+
+      // Remove password and refresh token from response
+      const { password, refreshToken, ...employeeWithoutPassword } = employee;
+
+      return {
+        message: 'Employee retrieved successfully',
+        data: employeeWithoutPassword
+      };
+    } catch (error) {
+      if (error.statusCode) {
+        throw error;
+      }
+      if (error.name === 'CastError') {
+        throw createError.badRequest('Invalid employee ID format');
+      }
+      throw error;
+    }
+  }
+
+  /**
+   * Delete employee by ID (admin only)
+   * @param {string} employeeId - Employee ID
+   * @returns {Promise<Object>} Deletion result
+   */
+  async deleteEmployee(employeeId) {
+    try {
+      if (!employeeId) {
+        throw createError.badRequest('Employee ID is required');
+      }
+
+      // Find the employee to verify they exist and are an employee
+      const employee = await User.findById(employeeId);
+      
+      if (!employee) {
+        throw createError.notFound('Employee not found');
+      }
+
+      if (employee.type !== 'employee') {
+        throw createError.badRequest('User is not an employee');
+      }
+
+      // Check if employee has any active quotations
+      const activeQuotations = await Quotation.find({
+        createdBy: employeeId,
+        status: { $ne: 'rejected' }
+      }).select('quotationId quotationNumber status');
+
+      if (activeQuotations.length > 0) {
+        const quotationDetails = activeQuotations.map(q => ({
+          quotationId: q.quotationId,
+          quotationNumber: q.quotationNumber,
+          status: q.status
+        }));
+
+        return {
+          success: false,
+          message: `Cannot delete employee. Employee has ${activeQuotations.length} active quotation(s) that must be rejected first.`,
+          data: {
+            activeQuotations: quotationDetails
+          }
+        };
+      }
+
+      // Delete the employee
+      await User.findByIdAndDelete(employeeId);
+
+      return {
+        success: true,
+        message: 'Employee deleted successfully',
+        data: {
+          employeeId: employee._id,
+          employeeName: employee.name,
+          deletedAt: new Date()
+        }
+      };
+    } catch (error) {
+      if (error.statusCode) {
+        throw error;
+      }
+      if (error.name === 'CastError') {
+        throw createError.badRequest('Invalid employee ID format');
+      }
+      throw error;
+    }
+  }
 }
 
 module.exports = new UserService();

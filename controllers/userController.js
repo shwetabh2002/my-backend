@@ -391,6 +391,67 @@ class UserController {
       }
     });
   });
+
+  // Create employee (admin only)
+  createEmployee = asyncHandler(async (req, res) => {
+    const employeeData = req.body;
+    const currentUser = req.user;
+
+    const result = await userService.createEmployee(employeeData, currentUser._id);
+
+    res.status(201).json({
+      success: true,
+      message: result.message,
+      data: result.data
+    });
+  });
+
+  // Get all employees (admin and employee access)
+  getEmployees = asyncHandler(async (req, res) => {
+    const query = req.query;
+
+    const result = await userService.getEmployees(query);
+
+    res.status(200).json({
+      success: true,
+      message: 'Employees retrieved successfully',
+      data: result.employees,
+      pagination: result.pagination,
+      summary: result.summary
+    });
+  });
+
+  // Get employee by ID (admin and employee access)
+  getEmployeeById = asyncHandler(async (req, res) => {
+    const employeeId = req.params.id;
+
+    const result = await userService.getEmployeeById(employeeId);
+
+    res.status(200).json({
+      success: true,
+      message: result.message,
+      data: result.data
+    });
+  });
+
+  // Delete employee (admin only)
+  deleteEmployee = asyncHandler(async (req, res) => {
+    const employeeId = req.params.id;
+    const currentUser = req.user;
+
+    const result = await userService.deleteEmployee(employeeId);
+
+    // Check if deletion was blocked due to active quotations
+    if (result.success === false) {
+      return res.status(400).json(result);
+    }
+
+    res.status(200).json({
+      success: true,
+      message: result.message,
+      data: result.data
+    });
+  });
 }
 
 module.exports = new UserController();

@@ -67,9 +67,30 @@ router.post('/customer',
   userController.createCustomer
 );
 
+router.post('/employee', 
+  isAdmin, 
+  validate(schemas.createEmployee), 
+  userController.createEmployee
+);
+
 router.get('/get-customer', 
   isEmployeeOrAdmin, 
   userController.getCustomers
+);
+
+router.get('/employees', 
+  isEmployeeOrAdmin, 
+  userController.getEmployees
+);
+
+router.get('/employees/:id', 
+  isEmployeeOrAdmin, 
+  userController.getEmployeeById
+);
+
+router.delete('/employees/:id', 
+  isAdmin, 
+  userController.deleteEmployee
 );
 
 router.get('/get-customer/:id', 

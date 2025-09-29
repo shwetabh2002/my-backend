@@ -66,7 +66,7 @@ const seedRoles = async () => {
         description: 'Full system access with all permissions'
       },
       {
-        name: 'EMPLOYEE',
+        name: 'SALES',
         permissions: [
           'user:read',
           'auth:login',
@@ -86,7 +86,7 @@ const seedRoles = async () => {
           'invoice:update',
           'invoice:delete'
         ],
-        description: 'Employee access with limited permissions'
+        description: 'Sales access with limited permissions'
       },
       {
         name: 'CUSTOMER',

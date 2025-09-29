@@ -1170,6 +1170,40 @@ const schemas = {
       paymentMethod: 'cash',
       paymentNotes: ''
     })
+  }),
+
+  // Employee creation schema
+  createEmployee: Joi.object({
+    name: Joi.string().min(2).max(100).required().messages({
+      'string.min': 'Name must be at least 2 characters long',
+      'string.max': 'Name cannot exceed 100 characters',
+      'any.required': 'Name is required'
+    }),
+    email: Joi.string().email().required().messages({
+      'string.email': 'Please provide a valid email address',
+      'any.required': 'Email is required'
+    }),
+    password: Joi.string().min(6).required().messages({
+      'string.min': 'Password must be at least 6 characters long',
+      'any.required': 'Password is required'
+    }),
+    phone: Joi.string().min(7).max(15).required().messages({
+      'string.min': 'Phone number must be at least 7 characters long',
+      'string.max': 'Phone number cannot exceed 15 characters',
+      'any.required': 'Phone number is required'
+    }),
+    roleType: Joi.string().valid('SALES', 'FINANCE').required().messages({
+      'any.only': 'Role type must be SALES or FINANCE',
+      'any.required': 'Role type is required'
+    }),
+    address: Joi.string().max(500).optional().messages({
+      'string.max': 'Address cannot exceed 500 characters'
+    }),
+    status: Joi.string().valid('active', 'inactive', 'suspended').default('active'),
+    countryCode: Joi.string().pattern(/^\+\d{1,3}$/).required().messages({
+      'string.pattern.base': 'Country code must start with + followed by 1-3 digits (e.g., +1, +971, +44)',
+      'any.required': 'Country code is required'
+    })
   })
 };
 
