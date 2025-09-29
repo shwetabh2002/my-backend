@@ -97,6 +97,26 @@ const seedRoles = async () => {
         name: 'SUPPLIER',
         permissions: [],
         description: 'Supplier role with no system access'
+      },
+      {
+        name: 'FINANCE',
+        permissions: [
+          'user:read',
+          'quotation:read',
+          'quotation:update',
+          'customer:read',
+          'customer:create',
+          'customer:update',
+          'invoice:read',
+          'invoice:create',
+          'invoice:update',
+          'inventory:read',
+          'company:read',
+          'company:update',
+          'auth:login',
+          'auth:profile'
+        ],
+        description: 'Finance role with access to financial data, invoices, quotations, and customer management'
       }
     ];
 
