@@ -202,8 +202,8 @@ class ExpenseService {
       }
 
       // Check if expense can be deleted (only pending expenses can be deleted)
-      if (expense.status !== 'pending') {
-        throw createError.badRequest('Only pending expenses can be deleted');
+      if (expense.status === 'approved') {
+        throw createError.badRequest('Only pending and rejected expenses can be deleted');
       }
 
       await Expense.findByIdAndDelete(expenseId);
