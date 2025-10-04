@@ -138,12 +138,6 @@ const companySchema = new mongoose.Schema({
     type: String,
     trim: true,
     maxlength: 200,
-    validate: {
-      validator: function(v) {
-        return !v || /^https?:\/\/.+/.test(v);
-      },
-      message: 'Website must be a valid URL'
-    }
   },
   email: {
     type: String,

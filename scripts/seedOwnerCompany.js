@@ -142,7 +142,7 @@ const seedOwnerCompany = async () => {
       },
       lastActivityDate: new Date(),
       companyCode: 'COMP-000001',
-      VAT: 5
+      VAT: 0
     });
 
     await ownerCompany.save();

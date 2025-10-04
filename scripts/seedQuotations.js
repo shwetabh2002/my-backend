@@ -101,7 +101,7 @@ const seedQuotations = async () => {
         ],
         subtotal: inventoryItems[0].sellingPrice, // Add required subtotal
         totalDiscount: 0,
-        VAT: 5,
+        VAT: 0,
         currency: 'AED',
         exchangeRate: 1,
         vatAmount: inventoryItems[0].sellingPrice * 0.05, // Add vatAmount
