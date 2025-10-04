@@ -250,7 +250,7 @@ const runSeed = async () => {
     
     // Get role references
     const adminRole = roles.find(r => r.name === 'ADMIN');
-    const employeeRole = roles.find(r => r.name === 'EMPLOYEE');
+    const employeeRole = roles.find(r => r.name === 'SALES');
     const customerRole = roles.find(r => r.name === 'CUSTOMER');
     const supplierRole = roles.find(r => r.name === 'SUPPLIER');
     

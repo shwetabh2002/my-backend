@@ -60,7 +60,8 @@ const seedQuotations = async () => {
           name: 'John Smith',
           email: 'john.smith@example.com',
           phone: '+1-555-0100',
-          address: '123 Customer Street, Dubai, UAE'
+          address: '123 Customer Street, Dubai, UAE',
+          trn: 'TRN123456789'
         },
         validTill: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days from now
         status: 'draft',
@@ -106,6 +107,7 @@ const seedQuotations = async () => {
         vatAmount: inventoryItems[0].sellingPrice * 0.05, // Add vatAmount
         totalAmount: inventoryItems[0].sellingPrice * 1.05, // Including 5% VAT
         notes: 'Sample quotation for testing purposes',
+        exportTo: 'Dubai, UAE',
         deliveryAddress: '123 Customer Street, Dubai, UAE',
         createdBy: adminUser._id
       },
@@ -118,7 +120,8 @@ const seedQuotations = async () => {
           name: 'Sarah Johnson',
           email: 'sarah.johnson@example.com',
           phone: '+1-555-0200',
-          address: '456 Business Avenue, Dubai, UAE'
+          address: '456 Business Avenue, Dubai, UAE',
+          trn: 'TRN987654321'
         },
         validTill: new Date(Date.now() + 15 * 24 * 60 * 60 * 1000), // 15 days from now
         status: 'sent',
@@ -173,6 +176,7 @@ const seedQuotations = async () => {
         vatAmount: (inventoryItemsWithSupplier[1].sellingPrice * 2 - 1000) * 0.05,
         totalAmount: (inventoryItemsWithSupplier[1].sellingPrice * 2 - 1000) * 1.05,
         notes: 'Bulk order with discount applied',
+        exportTo: 'Abu Dhabi, UAE',
         deliveryAddress: '456 Business Avenue, Dubai, UAE',
         createdBy: adminUser._id
       }
