@@ -87,6 +87,22 @@ class ReceiptController {
     });
   });
 
+  // Get receipts by quotation
+  getReceiptsByQuotation = asyncHandler(async (req, res) => {
+    const quotationId = req.params.quotationId;
+    const filters = req.query;
+
+    const result = await receiptService.getReceiptsByQuotation(quotationId, filters);
+
+    res.status(200).json({
+      success: true,
+      message: 'Quotation receipts retrieved successfully',
+      data: result.receipts,
+      pagination: result.pagination,
+      summary: result.summary
+    });
+  });
+
 
   // Get receipt summary
   getReceiptSummary = asyncHandler(async (req, res) => {

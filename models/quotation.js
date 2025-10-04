@@ -266,7 +266,8 @@ const quotationSchema = new mongoose.Schema({
   bookingAmount: {
     type: Number,
     required: false,
-    min: 0
+    min: 0,
+    default: 0
   },
   
   // Currency
@@ -316,6 +317,14 @@ const quotationSchema = new mongoose.Schema({
   timestamps: true,
   toJSON: { virtuals: true },
   toObject: { virtuals: true }
+});
+
+// Virtual for remaining amount (totalAmount - bookingAmount)
+quotationSchema.virtual('remainingAmount').get(function() {
+  if (this.bookingAmount && this.bookingAmount > 0) {
+    return this.totalAmount - this.bookingAmount;
+  }
+  return undefined; // Don't include the field if bookingAmount is 0 or not set
 });
 
 // Indexes for better query performance

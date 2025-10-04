@@ -19,5 +19,6 @@ router.delete('/:id', hasPermission('receipt:delete'), receiptController.deleteR
 
 // Filtered queries
 router.get('/customer/:customerId', hasPermission('receipt:read'), receiptController.getReceiptsByCustomer);
+router.get('/quotation/:quotationId', hasPermission('receipt:read'), receiptController.getReceiptsByQuotation);
 
 module.exports = router;

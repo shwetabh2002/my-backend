@@ -9,6 +9,13 @@ const receiptSchema = new mongoose.Schema({
     maxlength: [50, 'Receipt number cannot exceed 50 characters']
   },
 
+  // Reference to related quotation
+  quotationId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Quotation',
+    required: false
+  },
+
   // Customer information (similar to quotation structure)
   customer: {
     userId: {
@@ -154,10 +161,12 @@ receiptSchema.index({ 'customer.custId': 1 });
 receiptSchema.index({ receiptDate: 1 });
 receiptSchema.index({ createdBy: 1 });
 receiptSchema.index({ createdAt: -1 });
+receiptSchema.index({ quotationId: 1 });
 
 // Compound indexes
 receiptSchema.index({ 'customer.userId': 1, receiptDate: -1 });
 receiptSchema.index({ currency: 1, receiptDate: -1 });
+receiptSchema.index({ quotationId: 1, receiptDate: -1 });
 
 // Text search index
 receiptSchema.index({

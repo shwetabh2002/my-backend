@@ -4,6 +4,7 @@ const User = require('../models/User');
 const Company = require('../models/Company');
 const { createError } = require('../utils/apiError');
 const currencyService = require('./currencyService');
+const receiptService = require('./receiptService');
 
 class QuotationService {
   /**
@@ -27,7 +28,7 @@ class QuotationService {
       }
       
       const status = 'draft';
-      const statusHistory = [{
+      let  statusHistory = [{
         status: status,
         date: new Date()
       }];
@@ -124,8 +125,25 @@ quotationData.deliveryAddress = customer.address
       const quotationId = `QID-${year}-${String(Math.floor(Math.random() * 1000000)).padStart(6, '0')}`;
 
 
+      // Handle status override - only allow 'booked' status during creation
+      let finalStatus = 'draft'; // Default status
+      
+      if (quotationData.status === 'booked') {
+        finalStatus = 'booked';
+        // Add status history entry for 'booked' status
+        statusHistory = [{
+          status: 'booked',
+         date: new Date(),
+        }];
+      }
+
+      // Extract receipt-specific fields (don't store in quotation model)
+      const { paymentMethod, description, ...quotationModelData } = quotationData;
+
       const quotation = new Quotation({
-        ...quotationData,
+        ...quotationModelData,
+        status: finalStatus, // Override status
+        statusHistory: statusHistory, // Add status history
         createdBy,
         updatedBy: createdBy,
         quotationNumber: quotationNumber,
@@ -146,6 +164,35 @@ quotationData.deliveryAddress = customer.address
         { path: 'updatedBy', select: 'name email' },
         { path: 'customer.userId', select: 'name email' }
       ]);
+
+            // If quotation status is 'booked', automatically create a receipt
+            if (finalStatus === 'booked') {
+              try {
+                console.log('Creating automatic receipt for booked quotation:', quotation.quotationNumber);
+                
+                const receiptData = {
+                  customerId: quotation.customer.userId,
+                  quotationId: quotation._id,
+                  paymentMethod: paymentMethod || 'cash', // Use provided paymentMethod or default
+                  receiptDate: new Date(),
+                  amount: quotation.bookingAmount,
+                  currency: quotation.currency,
+                  description: description || `Booking payment for quotation ${quotation.quotationNumber}`, // Use provided description or default
+                };
+      
+                const receipt = await receiptService.createReceipt(receiptData, createdBy);
+                console.log('Automatic receipt created successfully:', receipt.receiptNumber);
+                
+                // Add receipt information to quotation response
+                quotation.receiptCreated = true;
+                quotation.receiptNumber = receipt.receiptNumber;
+                quotation.receiptId = receipt._id;
+              } catch (receiptError) {
+                console.error('Error creating automatic receipt:', receiptError.message);
+                // Don't fail the quotation creation if receipt creation fails
+                // Just log the error and continue
+              }
+            }
 
       return quotation;
     } catch (error) {
@@ -271,8 +318,7 @@ quotationData.deliveryAddress = customer.address
         .populate('items.supplierId', 'name email custId')
         .sort(sort)
         .skip(skip)
-        .limit(limitNum)
-        .lean();
+        .limit(limitNum);
 
       // Get total count for pagination
       const total = await Quotation.countDocuments(query);
@@ -452,7 +498,6 @@ quotationData.deliveryAddress = customer.address
         .sort(sort)
         .skip(skip)
         .limit(limitNum)
-        .lean();
 
       // Get total count for pagination
       const total = await Quotation.countDocuments(query);
@@ -651,7 +696,6 @@ quotationData.deliveryAddress = customer.address
         .sort(sort)
         .skip(skip)
         .limit(limitNum)
-        .lean();
 
       // Get total count for pagination
       const total = await Quotation.countDocuments(query);
@@ -1296,7 +1340,6 @@ quotationData.deliveryAddress = customer.address
         })
         .limit(parseInt(limit))
         .sort('-createdAt')
-        .lean();
 
       return quotations;
     } catch (error) {
@@ -1328,7 +1371,6 @@ quotationData.deliveryAddress = customer.address
         })
         .limit(parseInt(limit))
         .sort('-createdAt')
-        .lean();
 
       return quotations;
     } catch (error) {
@@ -1346,7 +1388,6 @@ quotationData.deliveryAddress = customer.address
         .populate('createdBy', 'name email')
         .populate('customer.userId', 'name email')
         .sort('-validTill')
-        .lean();
 
       return quotations;
     } catch (error) {
@@ -1365,7 +1406,6 @@ quotationData.deliveryAddress = customer.address
         .populate('createdBy', 'name email')
         .populate('customer.userId', 'name email')
         .sort('validTill')
-        .lean();
 
       return quotations;
     } catch (error) {
@@ -1447,7 +1487,7 @@ quotationData.deliveryAddress = customer.address
       // Pagination
       const skip = (page - 1) * limit;
       const limitNum = parseInt(limit);
-      query.status = { $in: ['accepted', 'approved', 'confirmed','review','rejected'] };
+      query.status = { $in: ['accepted', 'approved', 'confirmed','review','rejected','booked'] };
 
       // Execute query with pagination
       const quotations = await Quotation.find(query)
@@ -1457,8 +1497,7 @@ quotationData.deliveryAddress = customer.address
         .populate('items.supplierId', 'name email custId')
         .sort(sort)
         .skip(skip)
-        .limit(limitNum)
-        .lean();
+        .limit(limitNum);
 
       // Get total count for pagination
       const total = await Quotation.countDocuments(query);
@@ -1698,7 +1737,7 @@ quotationData.deliveryAddress = customer.address
       }
 
       // Only accepted quotations can be sent for review
-      if (quotation.status !== 'accepted') {
+      if (quotation.status !== 'accepted' && quotation.status !== 'booked') {
         throw createError.badRequest('Only accepted quotations can be sent for review');
       }
 
@@ -1816,7 +1855,6 @@ quotationData.deliveryAddress = customer.address
         })
         .limit(parseInt(limit))
         .sort('-createdAt')
-        .lean();
 
       return quotations;
     } catch (error) {
@@ -2846,7 +2884,6 @@ quotationData.deliveryAddress = customer.address
       // Fetch quotations with minimal data - much more efficient!
       const quotations = await Quotation.find(baseQuery)
         .select('totalAmount vatAmount subtotal totalDiscount additionalExpenses items status createdAt currency customer createdBy')
-        .lean();
 
       // Calculate analytics at code level - much faster and more maintainable
       const analytics = await this.calculateQuotationAnalytics(quotations, groupBy, limit);

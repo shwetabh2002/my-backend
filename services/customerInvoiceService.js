@@ -71,7 +71,7 @@ class CustomerInvoiceService {
         .populate('createdBy', 'name email')
         .populate('updatedBy', 'name email')
         .populate('customer.userId', 'name email trn ')
-        .populate('quotationId', 'quotationNumber title')
+        .populate('quotationId', 'quotationNumber title bookingAmount')
         .populate('items.itemId', 'itemName description')
         .populate('items.supplierId', 'name email custId')
         .populate('statusHistory.updatedBy', 'name email')
@@ -319,7 +319,7 @@ class CustomerInvoiceService {
       const populatedInvoice = await CustomerInvoice.findById(invoice._id)
         .populate('createdBy', 'name email')
         .populate('customer.userId', 'name email trn')
-        .populate('quotationId', 'quotationNumber title')
+        .populate('quotationId', 'quotationNumber title bookingAmount')
         .populate('items.itemId', 'itemName description')
         .populate('items.supplierId', 'name email custId')
         .populate('statusHistory.updatedBy', 'name email')
@@ -349,7 +349,7 @@ class CustomerInvoiceService {
         .populate('updatedBy', 'name email')
         .populate('customer.userId', 'name email trn')
         .populate('items.supplierId', 'name email custId')
-        .populate('quotationId', 'quotationNumber status');
+        .populate('quotationId', 'quotationNumber status bookingAmount');
 
       if (!invoice) {
         throw createError.notFound('Invoice not found');

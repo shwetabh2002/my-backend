@@ -970,7 +970,17 @@ const schemas = {
     }),
     bookingAmount: Joi.number().min(0).optional().messages({
       'number.min': 'Booking amount cannot be negative'
-    })
+    }),
+    status: Joi.string().valid('booked').optional().messages({
+      'any.only': 'Status can only be "booked" when creating a quotation'
+    }),
+    paymentMethod: Joi.string().min(1).max(50).optional().messages({
+      'string.min': 'Payment method must be at least 1 character long',
+      'string.max': 'Payment method cannot exceed 50 characters'
+    }),
+    description: Joi.string().max(1000).optional().messages({
+      'string.max': 'Description cannot exceed 1000 characters'
+    }),
   }),
 
   updateQuotation: Joi.object({
@@ -999,8 +1009,8 @@ const schemas = {
     validTill: Joi.date().min('now').messages({
       'date.min': 'Valid till date cannot be in the past'
     }),
-    status: Joi.string().valid('draft', 'sent', 'viewed', 'accepted', 'rejected', 'expired', 'converted', 'booked').messages({
-      'any.only': 'Status must be one of: draft, sent, viewed, accepted, rejected, expired, converted, booked'
+    status: Joi.string().valid('booked').optional().messages({
+      'any.only': 'Status can only be "booked" when creating a quotation'
     }),
     items: Joi.array().items(Joi.object({
       // Inventory fields (flat structure)
@@ -1177,7 +1187,7 @@ const schemas = {
     }).default({ description: '', amount: 0 }),
     customerPayment: Joi.object({
       paymentAmount: Joi.number().min(0).default(0),
-      paymentMethod: Joi.string().valid('cash', 'bank_transfer', 'cheque', 'other').default('cash'),
+      paymentMethod: Joi.string().default('cash'),
       paymentNotes: Joi.string().max(500).default(''),
       paymentDate: Joi.date()
     }).default({
@@ -1292,6 +1302,9 @@ const schemas = {
       'string.pattern.base': 'Invalid customer ID format',
       'any.required': 'Customer ID is required'
     }),
+    quotationId: Joi.string().pattern(/^[0-9a-fA-F]{24}$/).optional().messages({
+      'string.pattern.base': 'Invalid quotation ID format'
+    }),
     paymentMethod: Joi.string().min(1).max(50).required().messages({
       'string.min': 'Payment method is required',
       'string.max': 'Payment method cannot exceed 50 characters'
@@ -1314,6 +1327,9 @@ const schemas = {
   updateReceipt: Joi.object({
     customerId: Joi.string().pattern(/^[0-9a-fA-F]{24}$/).optional().messages({
       'string.pattern.base': 'Invalid customer ID format'
+    }),
+    quotationId: Joi.string().pattern(/^[0-9a-fA-F]{24}$/).optional().messages({
+      'string.pattern.base': 'Invalid quotation ID format'
     }),
     paymentMethod: Joi.string().min(1).max(50).optional().messages({
       'string.min': 'Payment method is required',

@@ -379,7 +379,7 @@ class UserService {
     
     // Get quotation data for this customer
     const quotations = await Quotation.find({ 'customer.userId': customerId })
-      .select('quotationId quotationNumber status currency validTill createdAt')
+      .select('quotationId quotationNumber status currency validTill createdAt bookingAmount')
       .populate('createdBy', 'name email')
       .sort('-createdAt')
       .lean();
@@ -653,7 +653,7 @@ class UserService {
       const activeQuotations = await Quotation.find({
         'customer.userId': customerId,
         status: { $ne: 'rejected' }
-      }).select('quotationId quotationNumber status');
+      }).select('quotationId quotationNumber status bookingAmount');
 
       if (activeQuotations.length > 0) {
         const quotationDetails = activeQuotations.map(q => ({
@@ -945,7 +945,7 @@ class UserService {
       const activeQuotations = await Quotation.find({
         createdBy: employeeId,
         status: { $ne: 'rejected' }
-      }).select('quotationId quotationNumber status');
+      }).select('quotationId quotationNumber status bookingAmount');
 
       if (activeQuotations.length > 0) {
         const quotationDetails = activeQuotations.map(q => ({

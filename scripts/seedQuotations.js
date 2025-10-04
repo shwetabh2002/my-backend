@@ -106,6 +106,7 @@ const seedQuotations = async () => {
         exchangeRate: 1,
         vatAmount: inventoryItems[0].sellingPrice * 0.05, // Add vatAmount
         totalAmount: inventoryItems[0].sellingPrice * 1.05, // Including 5% VAT
+        bookingAmount: 0, // Add bookingAmount field
         notes: 'Sample quotation for testing purposes',
         exportTo: 'Dubai, UAE',
         deliveryAddress: '123 Customer Street, Dubai, UAE',
@@ -175,6 +176,7 @@ const seedQuotations = async () => {
         subtotal: inventoryItemsWithSupplier[1].sellingPrice * 2,
         vatAmount: (inventoryItemsWithSupplier[1].sellingPrice * 2 - 1000) * 0.05,
         totalAmount: (inventoryItemsWithSupplier[1].sellingPrice * 2 - 1000) * 1.05,
+        bookingAmount: 0, // Add bookingAmount field
         notes: 'Bulk order with discount applied',
         exportTo: 'Abu Dhabi, UAE',
         deliveryAddress: '456 Business Avenue, Dubai, UAE',

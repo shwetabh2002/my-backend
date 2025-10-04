@@ -36,36 +36,36 @@ const seedOwnerCompany = async () => {
 
     // Create your company (the one selling products)
     const ownerCompany = new Company({
-      name: 'AL KARAMA MOTORS FZE',
-      legalName: 'AL KARAMA MOTORS FZE',
-      industry: 'Automotive', // Change this to your industry
-      businessType: 'Corporation', // Change this to your business type
+      name: 'PLANET SKY NEW AUTOMOBILE TRADING LLC',
+      legalName: 'PLANET SKY NEW AUTOMOBILE TRADING LLC',
+      industry: 'Automotive',
+      businessType: 'Corporation',
       description: 'Automotive dealership specializing in car sales and exports',
-      taxId: '12-3456789', // Replace with your actual tax ID
-      registrationNumber: 'YB123456', // Replace with your actual registration number
-      incorporationDate: new Date('2020-01-01'), // Replace with your actual incorporation date
-      website: 'https://www.alkaramamotors.com', // Replace with your actual website
-      email: 'info@alkaramamotors.com', // Replace with your actual email
-      phone: '+971 43337699', // Replace with your actual phone
-      fax: '+971 43337698', // Replace with your actual fax (optional)
+      taxId: '12-3456789',
+      registrationNumber: 'YB123456',
+      incorporationDate: new Date('2020-01-01T00:00:00.000Z'),
+      website: 'www.planet-sky.com',
+      email: 'info@planet-sky.com',
+      phone: '+971(4) 326 9576',
+      fax: '+971(4) 326 9576',
       address: {
-        street: 'Show Room No:377, Ducamz (Dubai Auto Zone)',
+        street: 'Samari Retail, building R1008, Office AF06',
         city: 'Ras Al Khor',
-        state: 'Dubai',
+        state: 'United Arab Emirates',
         postalCode: '00000',
         country: 'UAE'
       },
       billingAddress: {
-        street: 'Show Room No:377, Ducamz (Dubai Auto Zone)',
+        street: 'Samari Retail, building R1008, Office AF06',
         city: 'Ras Al Khor',
-        state: 'Dubai',
+        state: 'United Arab Emirates',
         postalCode: '00000',
         country: 'UAE'
       },
       shippingAddress: {
-        street: 'Show Room No:377, Ducamz (Dubai Auto Zone)',
+        street: 'Samari Retail, building R1008, Office AF06',
         city: 'Ras Al Khor',
-        state: 'Dubai',
+        state: 'United Arab Emirates',
         postalCode: '00000',
         country: 'UAE'
       },
@@ -79,9 +79,10 @@ const seedOwnerCompany = async () => {
         }
       ],
       currency: 'AED',
-      paymentTerms: 'Due on Receipt', // Your payment terms
-      bankDetails: {
-        AED: {
+      creditLimit: 0,
+      paymentTerms: 'Due on Receipt',
+      bankDetails: new Map([
+        ['AED', {
           bankName: 'Mashreq Bank',
           accountName: 'PLANET SKY NEW AUTOMOBILE TRADING LLC',
           accountNumber: '19101380548',
@@ -89,8 +90,8 @@ const seedOwnerCompany = async () => {
           swiftCode: 'BOMLAEAD',
           branch: 'Mashreq NEO [099]',
           address: 'AL GHURAIR CITY, 339-C, AGC, AL RIQQA STREET, DUBAI – UAE'
-        },
-        USD: {
+        }],
+        ['USD', {
           bankName: 'Mashreq Bank',
           accountName: 'PLANET SKY NEW AUTOMOBILE TRADING LLC',
           accountNumber: '19101380549',
@@ -98,8 +99,8 @@ const seedOwnerCompany = async () => {
           swiftCode: 'BOMLAEAD',
           branch: 'Mashreq NEO [099]',
           address: 'AL GHURAIR CITY, 339-C, AGC, AL RIQQA STREET, DUBAI – UAE'
-        },
-        EURO: {
+        }],
+        ['EURO', {
           bankName: 'Mashreq Bank',
           accountName: 'PLANET SKY NEW AUTOMOBILE TRADING LLC',
           accountNumber: '19101380550',
@@ -107,20 +108,28 @@ const seedOwnerCompany = async () => {
           swiftCode: 'BOMLAEAD',
           branch: 'Mashreq NEO [099]',
           address: 'AL GHURAIR CITY, 339-C, AGC, AL RIQQA STREET, DUBAI – UAE'
-        }
-      },
+        }]
+      ]),
       status: 'active',
+      isOwner: true,
       priority: 'critical',
-      customerTier: 'enterprise', // Not applicable for owner company
-      isOwner: true, // This marks it as your company
+      customerTier: 'enterprise',
       socialMedia: {
         linkedin: 'https://linkedin.com/company/alkaramamotors',
         twitter: 'https://twitter.com/alkaramamotors',
         facebook: 'https://facebook.com/alkaramamotors'
       },
-      tags: ['owner', 'automotive', 'car-dealership', 'export'],
-      categories: ['Automotive', 'Car Dealership'],
-      notes: 'AL KARAMA MOTORS FZE - Automotive dealership specializing in car sales and exports',
+      tags: [
+        'owner',
+        'automotive',
+        'car-dealership',
+        'export'
+      ],
+      categories: [
+        'Automotive',
+        'Car Dealership'
+      ],
+      notes: 'PLANET SKY NEW AUTOMOBILE TRADING LLC - Automotive dealership specializing in car sales and exports',
       internalNotes: 'Owner company - used for invoices, quotations, and business documents',
       createdBy: adminUser._id,
       termCondition: {
@@ -129,12 +138,11 @@ const seedOwnerCompany = async () => {
           delivery: "Ex-Stock, Subject to prior Sale. After the full payment, the car will be delivered to the Dubai Showroom within 3 to 4 working days.",
           payment: "100% advance payment before delivery. By Cheque/Cash/ Swift Transfer.",
           validity: "3 working days from the date of issue"
-        },
-        invoice: {
-          paymentTerms:"This receipt voucher confirms the amount received as per the details mentioned above. \n All banking charges outside the UAE are to be borne by the buyer. \n Payments are acceptable through T/T, Cheques, or Cash only. \n Advance / down payments are strictly non-refundable under any circumstances. \n Delivery of the vehicle(s) will only be made upon receipt of full payment. \n The company shall not be held liable for delays caused by bank processing, shipping, or customs clearance."
         }
       },
-      VAT:5
+      lastActivityDate: new Date(),
+      companyCode: 'COMP-000001',
+      VAT: 5
     });
 
     await ownerCompany.save();

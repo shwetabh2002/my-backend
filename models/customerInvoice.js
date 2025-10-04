@@ -264,7 +264,6 @@ const customerInvoiceSchema = new mongoose.Schema({
     },
     paymentMethod: {
     type: String,
-    enum: ['cash', 'bank_transfer', 'cheque', 'other'],
     default: 'cash'
     },
     paymentNotes: {

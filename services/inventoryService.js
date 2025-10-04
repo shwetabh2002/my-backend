@@ -217,7 +217,7 @@ class InventoryService {
           quotations = await Quotation.find({
             'items.vinNumbers.chasisNumber': { $in: chassisNumbers },
             status:{$ne:'rejected'}
-          }).select('quotationId quotationNumber status createdAt customer.name items.vinNumbers');
+          }).select('quotationId quotationNumber status createdAt customer.name items.vinNumbers bookingAmount');
 
           // console.log('Found quotations:', quotations.length);
           if (quotations.length > 0) {

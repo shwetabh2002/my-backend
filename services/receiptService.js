@@ -1,5 +1,6 @@
 const Receipt = require('../models/Receipt');
 const User = require('../models/User');
+const Company = require('../models/Company');
 const createError = require('http-errors');
 
 class ReceiptService {
@@ -42,6 +43,7 @@ class ReceiptService {
       await receipt.save();
       await receipt.populate('createdBy', 'name email');
       await receipt.populate('customer.userId', 'name email trn');
+      await receipt.populate('quotationId', 'quotationNumber status totalAmount bookingAmount');
 
       return receipt;
     } catch (error) {
@@ -65,14 +67,42 @@ class ReceiptService {
     try {
       const receipt = await Receipt.findById(receiptId)
         .populate('createdBy', 'name email')
-        .populate('updatedBy', 'name email')
-        .populate('customer.userId', 'name email trn');
+        .populate('customer.userId', 'name email trn')
+        .populate('quotationId', 'quotationNumber status totalAmount bookingAmount');
 
       if (!receipt) {
         throw createError.notFound('Receipt not found');
       }
 
-      return receipt;
+      // Fetch company data and add to response
+      const company = await Company.findOne();
+      
+      // Convert receipt to plain object and add company
+      const receiptObj = receipt.toObject();
+      if (company) {
+        // Create company object with bank details based on receipt currency
+        const companyObj = company.toObject();
+        
+        // Add bank details for the specific currency, default to AED
+        const currency = receipt.currency || 'AED';
+        const bankDetails = companyObj.bankDetails?.get(currency) || 
+                           companyObj.bankDetails?.get('AED') || 
+                           (companyObj.bankDetails && Object.values(companyObj.bankDetails)[0]);
+        
+        receiptObj.company = {
+          name: companyObj.name,
+          address: companyObj.address,
+          phone: companyObj.phone,
+          email: companyObj.email,
+          website: companyObj.website,
+          taxNumber: companyObj.taxNumber,
+          logo: companyObj.logo,
+          bankDetails: bankDetails || null,
+          termCondition: companyObj.termCondition
+        };
+      }
+
+      return receiptObj;
     } catch (error) {
       if (error.name === 'CastError') {
         throw createError.badRequest('Invalid receipt ID format');
@@ -152,6 +182,7 @@ class ReceiptService {
       const receipts = await Receipt.find(query)
         .populate('createdBy', 'name email')
         .populate('customer.userId', 'name email trn')
+        .populate('quotationId', 'quotationNumber status totalAmount bookingAmount')
         .sort(sort)
         .skip(skip)
         .limit(parseInt(limit));
@@ -232,6 +263,7 @@ class ReceiptService {
       await receipt.populate('createdBy', 'name email');
       await receipt.populate('updatedBy', 'name email');
       await receipt.populate('customer.userId', 'name email trn');
+      await receipt.populate('quotationId', 'quotationNumber status totalAmount bookingAmount');
 
       return receipt;
     } catch (error) {
@@ -334,6 +366,20 @@ class ReceiptService {
     try {
       const query = { 'customer.userId': customerId, ...filters };
       return await this.getAllReceipts({ ...filters, customerId });
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  /**
+   * Get receipts by quotation ID
+   * @param {string} quotationId - Quotation ID
+   * @param {Object} filters - Additional filters
+   * @returns {Promise<Object>} Quotation receipts
+   */
+  async getReceiptsByQuotation(quotationId, filters = {}) {
+    try {
+      return await this.getAllReceipts({ ...filters, quotationId });
     } catch (error) {
       throw error;
     }
