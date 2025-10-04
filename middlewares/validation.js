@@ -1181,6 +1181,71 @@ const schemas = {
     })
   }),
 
+  // Expense schemas
+  createExpense: Joi.object({
+    title: Joi.string().min(2).max(200).required().messages({
+      'string.min': 'Title must be at least 2 characters long',
+      'string.max': 'Title cannot exceed 200 characters',
+      'any.required': 'Title is required'
+    }),
+    description: Joi.string().max(1000).optional().messages({
+      'string.max': 'Description cannot exceed 1000 characters'
+    }),
+    amount: Joi.number().positive().required().messages({
+      'number.positive': 'Amount must be positive',
+      'any.required': 'Amount is required'
+    }),
+    currency: Joi.string().length(3).uppercase().default('AED').messages({
+      'string.length': 'Currency must be exactly 3 characters',
+      'string.uppercase': 'Currency must be uppercase'
+    }),
+    category: Joi.string().min(1).max(100).required().messages({
+      'string.min': 'Category is required',
+      'string.max': 'Category cannot exceed 100 characters',
+      'any.required': 'Category is required'
+    }),
+    subcategory: Joi.string().max(100).optional().messages({
+      'string.max': 'Subcategory cannot exceed 100 characters'
+    }),
+    paymentMethod: Joi.string().min(1).max(50).required().messages({
+      'string.min': 'Payment method is required',
+      'string.max': 'Payment method cannot exceed 50 characters',
+      'any.required': 'Payment method is required'
+    }),
+  }),
+
+  updateExpense: Joi.object({
+    title: Joi.string().min(2).max(200).optional().messages({
+      'string.min': 'Title must be at least 2 characters long',
+      'string.max': 'Title cannot exceed 200 characters'
+    }),
+    description: Joi.string().max(1000).optional().messages({
+      'string.max': 'Description cannot exceed 1000 characters'
+    }),
+    amount: Joi.number().positive().optional().messages({
+      'number.positive': 'Amount must be positive'
+    }),
+    currency: Joi.string().length(3).uppercase().optional().messages({
+      'string.length': 'Currency must be exactly 3 characters',
+      'string.uppercase': 'Currency must be uppercase'
+    }),
+    category: Joi.string().min(1).max(100).optional().messages({
+      'string.min': 'Category cannot be empty',
+      'string.max': 'Category cannot exceed 100 characters'
+    }),
+    subcategory: Joi.string().max(100).optional().messages({
+      'string.max': 'Subcategory cannot exceed 100 characters'
+    }),
+    paymentMethod: Joi.string().min(1).max(50).optional().messages({
+      'string.min': 'Payment method cannot be empty',
+      'string.max': 'Payment method cannot exceed 50 characters'
+    }),
+    status: Joi.string().valid('pending', 'approved', 'rejected', 'paid').optional(),
+    approvalNotes: Joi.string().max(500).optional().messages({
+      'string.max': 'Approval notes cannot exceed 500 characters'
+    })
+  }),
+
   // Employee creation schema
   createEmployee: Joi.object({
     name: Joi.string().min(2).max(100).required().messages({
