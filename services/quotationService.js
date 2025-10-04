@@ -3,6 +3,7 @@ const Inventory = require('../models/Inventory');
 const User = require('../models/User');
 const Company = require('../models/Company');
 const { createError } = require('../utils/apiError');
+const currencyService = require('./currencyService');
 
 class QuotationService {
   /**
@@ -14,6 +15,17 @@ class QuotationService {
   async createQuotation(quotationData, createdBy) {
     try {
       console.log('Creating quotation for customer:', quotationData.custId);
+      
+      // Convert currency to AED if it's not already AED
+      if (quotationData.currency && quotationData.currency.toUpperCase() !== 'AED') {
+        console.log(`Converting quotation from ${quotationData.currency} to AED`);
+        quotationData = await currencyService.convertQuotationCurrency(quotationData, 'AED');
+        console.log('Currency conversion completed');
+      } else {
+        // Ensure currency is set to AED
+        quotationData.currency = 'AED';
+      }
+      
       const status = 'draft';
       const statusHistory = [{
         status: status,
@@ -48,7 +60,8 @@ class QuotationService {
         email: customer.email,
         phone: customer.phone || customer.phone,
         address: customer.address || "no address",
-        countryCode: customer.countryCode || "+971"
+        countryCode: customer.countryCode || "+971",
+        trn: customer.trn || null
       };
 quotationData.deliveryAddress = customer.address 
       // Calculate line totals for each item
@@ -816,7 +829,7 @@ quotationData.deliveryAddress = customer.address
       const quotation = await Quotation.findById(quotationId)
         .populate('createdBy', 'name email')
         .populate('updatedBy', 'name email')
-        .populate('customer.userId', 'name email')
+        .populate('customer.userId', 'name email trn')
         .populate('items.supplierId', 'name email custId')
 
       if (!quotation) {
@@ -928,7 +941,7 @@ quotationData.deliveryAddress = customer.address
       const quotation = await Quotation.findOne({ quotationNumber })
         .populate('createdBy', 'name email')
         .populate('updatedBy', 'name email')
-        .populate('customer.userId', 'name email')
+        .populate('customer.userId', 'name email trn')
         .populate({
           path: 'items.itemId',
           select: 'name sku sellingPrice description supplierId',
@@ -993,7 +1006,7 @@ quotationData.deliveryAddress = customer.address
         }
       ).populate('createdBy', 'name email')
        .populate('updatedBy', 'name email')
-       .populate('customer.userId', 'name email')
+       .populate('customer.userId', 'name email trn')
        .populate({
          path: 'items.itemId',
          select: 'name sku sellingPrice supplierId',
@@ -1068,7 +1081,7 @@ quotationData.deliveryAddress = customer.address
         { new: true, runValidators: true }
       ).populate('createdBy', 'name email')
        .populate('updatedBy', 'name email')
-       .populate('customer.userId', 'name email');
+       .populate('customer.userId', 'name email trn');
 
       if (!quotation) {
         throw createError.notFound('Quotation not found');

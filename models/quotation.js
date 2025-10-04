@@ -170,6 +170,12 @@ const quotationSchema = new mongoose.Schema({
     address:{
       type:String,
       required:true
+    },
+    trn: {
+      type: String,
+      trim: true,
+      maxlength: 50,
+      required: false
     }
   },
   validTill: {

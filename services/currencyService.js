@@ -178,6 +178,125 @@ class CurrencyService {
       entries: Array.from(this.cache.keys())
     };
   }
+
+  /**
+   * Convert amount from one currency to another
+   * @param {number} amount - Amount to convert
+   * @param {string} fromCurrency - Source currency code
+   * @param {string} toCurrency - Target currency code
+   * @returns {Promise<Object>} Conversion result
+   */
+  async convertCurrency(amount, fromCurrency, toCurrency) {
+    try {
+      if (!amount || amount <= 0) {
+        return {
+          originalAmount: amount,
+          convertedAmount: amount,
+          fromCurrency: fromCurrency,
+          toCurrency: toCurrency,
+          exchangeRate: 1.0
+        };
+      }
+
+      if (fromCurrency.toUpperCase() === toCurrency.toUpperCase()) {
+        return {
+          originalAmount: amount,
+          convertedAmount: amount,
+          fromCurrency: fromCurrency,
+          toCurrency: toCurrency,
+          exchangeRate: 1.0
+        };
+      }
+
+      // Get exchange rates for both currencies
+      const [fromRate, toRate] = await Promise.all([
+        this.getExchangeRate(fromCurrency),
+        this.getExchangeRate(toCurrency)
+      ]);
+
+      // Convert: amount_in_from_currency * (to_rate / from_rate)
+      const exchangeRate = toRate / fromRate;
+      const convertedAmount = Math.round(amount * exchangeRate * 100) / 100;
+
+      return {
+        originalAmount: amount,
+        convertedAmount: convertedAmount,
+        fromCurrency: fromCurrency.toUpperCase(),
+        toCurrency: toCurrency.toUpperCase(),
+        exchangeRate: exchangeRate
+      };
+    } catch (error) {
+      console.error('Error converting currency:', error.message);
+      
+      return {
+        originalAmount: amount,
+        convertedAmount: amount,
+        fromCurrency: fromCurrency,
+        toCurrency: toCurrency,
+        exchangeRate: 1.0,
+        error: 'Currency conversion failed, showing original amount'
+      };
+    }
+  }
+
+  /**
+   * Convert quotation payload from one currency to another
+   * @param {Object} quotationPayload - Quotation payload object
+   * @param {string} targetCurrency - Target currency code (default: 'AED')
+   * @returns {Promise<Object>} Converted quotation payload
+   */
+  async convertQuotationCurrency(quotationPayload, targetCurrency = 'AED') {
+    try {
+      const sourceCurrency = quotationPayload.currency;
+      
+      if (!sourceCurrency) {
+        throw new Error('Source currency not found in quotation payload');
+      }
+
+      if (sourceCurrency.toUpperCase() === targetCurrency.toUpperCase()) {
+        return quotationPayload;
+      }
+
+      // Get exchange rate for conversion
+      const conversionResult = await this.convertCurrency(1, sourceCurrency, targetCurrency);
+      const exchangeRate = conversionResult.exchangeRate;
+
+      // Create a deep copy of the payload
+      const convertedPayload = JSON.parse(JSON.stringify(quotationPayload));
+
+      // Convert items selling prices
+      if (convertedPayload.items && Array.isArray(convertedPayload.items)) {
+        convertedPayload.items.forEach(item => {
+          if (item.sellingPrice) {
+            item.sellingPrice = Math.round(item.sellingPrice * exchangeRate * 100) / 100;
+          }
+        });
+      }
+
+      // Convert additional expenses amount
+      if (convertedPayload.additionalExpenses && convertedPayload.additionalExpenses.amount) {
+        convertedPayload.additionalExpenses.amount = Math.round(convertedPayload.additionalExpenses.amount * exchangeRate * 100) / 100;
+      }
+
+      // Convert discount amount (if it's a fixed amount)
+      if (convertedPayload.discount && convertedPayload.discountType === 'fixed') {
+        convertedPayload.discount = Math.round(convertedPayload.discount * exchangeRate * 100) / 100;
+      }
+
+      // Update currency
+      convertedPayload.currency = targetCurrency.toUpperCase();
+
+      return convertedPayload;
+    } catch (error) {
+      console.error('Error converting quotation currency:', error.message);
+      
+      // Return original payload with error info
+      return {
+        ...quotationPayload,
+        conversionError: error.message
+      };
+    }
+  }
 }
 
 module.exports = new CurrencyService();

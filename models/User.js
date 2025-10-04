@@ -81,6 +81,11 @@ const userSchema = new mongoose.Schema({
     trim: true,
     maxlength: [200, 'Address cannot exceed 200 characters']
   },
+  trn: {
+    type: String,
+    trim: true,
+    maxlength: [50, 'TRN number cannot exceed 50 characters'],
+  },
   refreshToken: {
     type: String,
     select: false

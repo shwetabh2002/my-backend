@@ -125,6 +125,9 @@ const schemas = {
     address: Joi.string().max(200).messages({
       'string.max': 'Address cannot exceed 200 characters'
     }),
+    trn: Joi.string().max(50).optional().messages({
+      'string.max': 'TRN number cannot exceed 50 characters'
+    }),
     // Customer ID is auto-generated, but can be provided for specific cases
     custId: Joi.string().pattern(/^CUS-\d{3}$/).optional().messages({
       'string.pattern.base': 'Customer ID must be in format CUS-XXX'

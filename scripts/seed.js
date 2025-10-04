@@ -194,6 +194,18 @@ const seedSampleUsers = async (employeeRole, customerRole, supplierRole) => {
         address: '123 Main St, Anytown, USA'
       },
       {
+        name: 'amy customer',
+        countryCode: '+1',
+        email: 'amy@example.com',
+        phone: '+971-50-1234567',
+        custId: 'CUS-002',
+        type: 'customer',
+        status: 'active',
+        roleIds: [customerRole._id],
+        address: 'dubai, california, UAE',
+        trn: '1234567890'
+      },
+      {
         name: 'Auto Parts Supplier',
         countryCode: '+971',
         email: 'supplier1@autoparts.com',

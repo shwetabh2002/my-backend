@@ -47,7 +47,12 @@ const customerInvoiceSchema = new mongoose.Schema({
       type: String,
       trim: true
     },
-    address: String
+    address: String,
+    trn: {
+      type: String,
+      trim: true,
+      maxlength: 50
+    }
   },
   items: [{
     // Inventory fields (embedded directly) - same as quotation

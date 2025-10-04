@@ -232,6 +232,7 @@ class UserController {
             email: customer.email,
             phone: customer.phone,
             address: customer.address,
+            trn: customer.trn,
             type: customer.type,
             isActive: customer.isActive,
             createdAt: customer.createdAt,

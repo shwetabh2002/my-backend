@@ -332,7 +332,8 @@ class UserService {
         query.$or = [
           { name: { $regex: search, $options: 'i' } },
           { email: { $regex: search, $options: 'i' } },
-          { phone: { $regex: search, $options: 'i' } }
+          { phone: { $regex: search, $options: 'i' } },
+          { trn: { $regex: search, $options: 'i' } }
         ];
       }
       
@@ -486,7 +487,8 @@ class UserService {
         query.$or = [
           { name: { $regex: search, $options: 'i' } },
           { email: { $regex: search, $options: 'i' } },
-          { phone: { $regex: search, $options: 'i' } }
+          { phone: { $regex: search, $options: 'i' } },
+          { trn: { $regex: search, $options: 'i' } }
         ];
       }
       
