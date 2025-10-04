@@ -70,7 +70,7 @@ class CustomerInvoiceService {
       const invoices = await CustomerInvoice.find(query)
         .populate('createdBy', 'name email')
         .populate('updatedBy', 'name email')
-        .populate('customer.userId', 'name email')
+        .populate('customer.userId', 'name email trn ')
         .populate('quotationId', 'quotationNumber title')
         .populate('items.itemId', 'itemName description')
         .populate('items.supplierId', 'name email custId')
@@ -318,7 +318,7 @@ class CustomerInvoiceService {
       // Populate the created invoice
       const populatedInvoice = await CustomerInvoice.findById(invoice._id)
         .populate('createdBy', 'name email')
-        .populate('customer.userId', 'name email')
+        .populate('customer.userId', 'name email trn')
         .populate('quotationId', 'quotationNumber title')
         .populate('items.itemId', 'itemName description')
         .populate('items.supplierId', 'name email custId')
@@ -347,7 +347,7 @@ class CustomerInvoiceService {
       const invoice = await CustomerInvoice.findById(invoiceId)
         .populate('createdBy', 'name email')
         .populate('updatedBy', 'name email')
-        .populate('customer.userId', 'name email')
+        .populate('customer.userId', 'name email trn')
         .populate('items.supplierId', 'name email custId')
         .populate('quotationId', 'quotationNumber status');
 

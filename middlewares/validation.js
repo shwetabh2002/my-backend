@@ -964,7 +964,10 @@ const schemas = {
         'number.min': 'Amount cannot be negative',
         'any.required': 'Amount is required'
       })
-    }).optional()
+    }).optional(),
+    exportTo: Joi.string().max(200).optional().messages({
+      'string.max': 'Export destination cannot exceed 200 characters'
+    })
   }),
 
   updateQuotation: Joi.object({
@@ -1159,6 +1162,9 @@ const schemas = {
       'any.required': 'Quotation ID is required'
     }),
     notes: Joi.string().allow('').optional().max(1000),
+    exportTo: Joi.string().max(200).optional().messages({
+      'string.max': 'Export destination cannot exceed 200 characters'
+    }),
     moreExpense: Joi.object({
       description: Joi.string().allow('').optional().default(''),
       amount: Joi.number().min(0).default(0)

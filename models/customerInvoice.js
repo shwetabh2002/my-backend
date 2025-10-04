@@ -303,6 +303,11 @@ const customerInvoiceSchema = new mongoose.Schema({
     trim: true,
     maxlength: 1000
   },
+  exportTo: {
+    type: String,
+    trim: true,
+    maxlength: 200
+  },
   createdBy: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',

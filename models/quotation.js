@@ -279,6 +279,13 @@ const quotationSchema = new mongoose.Schema({
     maxlength: 1000
   },
   
+  // Export Information
+  exportTo: {
+    type: String,
+    trim: true,
+    maxlength: 200
+  },
+  
   // Delivery Information
   deliveryAddress: {
     type:String,
