@@ -2871,7 +2871,7 @@ quotationData.deliveryAddress = customer.address
           status: {
             value: status || null,
             applied: !!status,
-            options: ['draft', 'sent', 'viewed', 'accepted', 'rejected', 'expired', 'converted', 'review', 'approved', 'confirmed', 'completed']
+            options: ['draft', 'sent', 'viewed', 'accepted', 'rejected', 'expired', 'converted', 'review', 'approved', 'confirmed', 'completed', 'booked']
           },
           
           // Customer filters

@@ -967,6 +967,9 @@ const schemas = {
     }).optional(),
     exportTo: Joi.string().max(200).optional().messages({
       'string.max': 'Export destination cannot exceed 200 characters'
+    }),
+    bookingAmount: Joi.number().min(0).optional().messages({
+      'number.min': 'Booking amount cannot be negative'
     })
   }),
 
@@ -996,8 +999,8 @@ const schemas = {
     validTill: Joi.date().min('now').messages({
       'date.min': 'Valid till date cannot be in the past'
     }),
-    status: Joi.string().valid('draft', 'sent', 'viewed', 'accepted', 'rejected', 'expired', 'converted').messages({
-      'any.only': 'Status must be one of: draft, sent, viewed, accepted, rejected, expired, converted'
+    status: Joi.string().valid('draft', 'sent', 'viewed', 'accepted', 'rejected', 'expired', 'converted', 'booked').messages({
+      'any.only': 'Status must be one of: draft, sent, viewed, accepted, rejected, expired, converted, booked'
     }),
     items: Joi.array().items(Joi.object({
       // Inventory fields (flat structure)
@@ -1126,12 +1129,15 @@ const schemas = {
       amount: Joi.number().min(0).messages({
         'number.min': 'Amount cannot be negative'
       })
-    }).optional()
+    }).optional(),
+    bookingAmount: Joi.number().min(0).optional().messages({
+      'number.min': 'Booking amount cannot be negative'
+    })
   }).min(1), // At least one field must be provided
 
   updateQuotationStatus: Joi.object({
-    status: Joi.string().valid('draft', 'sent', 'viewed', 'accepted', 'rejected', 'expired', 'converted').required().messages({
-      'any.only': 'Status must be one of: draft, sent, viewed, accepted, rejected, expired, converted',
+    status: Joi.string().valid('draft', 'sent', 'viewed', 'accepted', 'rejected', 'expired', 'converted', 'booked').required().messages({
+      'any.only': 'Status must be one of: draft, sent, viewed, accepted, rejected, expired, converted, booked',
       'any.required': 'Status is required'
     })
   }),
@@ -1143,7 +1149,7 @@ const schemas = {
       'string.min': 'Search term must be at least 1 character long',
       'string.max': 'Search term cannot exceed 100 characters'
     }),
-    status: Joi.string().valid('draft', 'sent', 'viewed', 'accepted', 'rejected', 'expired', 'converted'),
+    status: Joi.string().valid('draft', 'sent', 'viewed', 'accepted', 'rejected', 'expired', 'converted', 'booked'),
     customerId: Joi.string().min(1).max(20).messages({
       'string.min': 'Customer ID must be at least 1 character long',
       'string.max': 'Customer ID cannot exceed 20 characters'
@@ -1277,6 +1283,54 @@ const schemas = {
     countryCode: Joi.string().pattern(/^\+\d{1,3}$/).required().messages({
       'string.pattern.base': 'Country code must start with + followed by 1-3 digits (e.g., +1, +971, +44)',
       'any.required': 'Country code is required'
+    })
+  }),
+
+  // Receipt validation schemas
+  createReceipt: Joi.object({
+    customerId: Joi.string().pattern(/^[0-9a-fA-F]{24}$/).required().messages({
+      'string.pattern.base': 'Invalid customer ID format',
+      'any.required': 'Customer ID is required'
+    }),
+    paymentMethod: Joi.string().min(1).max(50).required().messages({
+      'string.min': 'Payment method is required',
+      'string.max': 'Payment method cannot exceed 50 characters'
+    }),
+    receiptDate: Joi.date().optional().messages({
+      'date.base': 'Receipt date must be a valid date'
+    }),
+    amount: Joi.number().positive().required().messages({
+      'number.positive': 'Amount must be a positive number'
+    }),
+    currency: Joi.string().length(3).uppercase().default('AED').messages({
+      'string.length': 'Currency must be exactly 3 characters',
+      'string.uppercase': 'Currency must be uppercase'
+    }),
+    description: Joi.string().max(1000).optional().messages({
+      'string.max': 'Description cannot exceed 1000 characters'
+    })
+  }),
+
+  updateReceipt: Joi.object({
+    customerId: Joi.string().pattern(/^[0-9a-fA-F]{24}$/).optional().messages({
+      'string.pattern.base': 'Invalid customer ID format'
+    }),
+    paymentMethod: Joi.string().min(1).max(50).optional().messages({
+      'string.min': 'Payment method is required',
+      'string.max': 'Payment method cannot exceed 50 characters'
+    }),
+    receiptDate: Joi.date().optional().messages({
+      'date.base': 'Receipt date must be a valid date'
+    }),
+    amount: Joi.number().positive().optional().messages({
+      'number.positive': 'Amount must be a positive number'
+    }),
+    currency: Joi.string().length(3).uppercase().optional().messages({
+      'string.length': 'Currency must be exactly 3 characters',
+      'string.uppercase': 'Currency must be uppercase'
+    }),
+    description: Joi.string().max(1000).optional().messages({
+      'string.max': 'Description cannot exceed 1000 characters'
     })
   })
 };

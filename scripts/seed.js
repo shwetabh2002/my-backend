@@ -64,7 +64,11 @@ const seedRoles = async () => {
           'expense:create',
           'expense:read',
           'expense:update',
-          'expense:delete'
+          'expense:delete',
+          'receipt:create',
+          'receipt:read',
+          'receipt:update',
+          'receipt:delete'
 
         ],
         description: 'Full system access with all permissions'
@@ -92,7 +96,11 @@ const seedRoles = async () => {
           'expense:create',
           'expense:read',
           'expense:update',
-          'expense:delete'
+          'expense:delete',
+          'receipt:create',
+          'receipt:read',
+          'receipt:update',
+          'receipt:delete'
         ],
         description: 'Sales access with limited permissions'
       },
@@ -121,13 +129,16 @@ const seedRoles = async () => {
           'expense:read',
           'expense:create',
           'expense:update',
+          'receipt:read',
+          'receipt:create',
+          'receipt:update',
           'inventory:read',
           'company:read',
           'company:update',
           'auth:login',
           'auth:profile'
         ],
-        description: 'Finance role with access to financial data, invoices, quotations, and customer management'
+        description: 'Finance role with access to financial data, invoices, quotations, receipts, and customer management'
       }
     ];
 

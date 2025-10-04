@@ -15,6 +15,7 @@ const companyRoutes = require('./routes/companies');
 const quotationRoutes = require('./routes/quotations');
 const customerInvoiceRoutes = require('./routes/customerInvoices');
 const expenseRoutes = require('./routes/expenses');
+const receiptRoutes = require('./routes/receipts');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -47,6 +48,7 @@ app.use('/companies', companyRoutes);
 app.use('/quotations', quotationRoutes);
 app.use('/customer-invoices', customerInvoiceRoutes);
 app.use('/expenses', expenseRoutes);
+app.use('/receipts', receiptRoutes);
 
 // Health check endpoint
 app.get('/health', (req, res) => {
