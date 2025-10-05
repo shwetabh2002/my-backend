@@ -4,6 +4,7 @@ const Inventory = require('../models/Inventory');
 const { createError } = require('../utils/apiError');
 const Company = require('../models/Company');
 const quotationService = require('./quotationService');
+const receiptService = require('./receiptService');
 
 
 class CustomerInvoiceService {
@@ -315,6 +316,20 @@ class CustomerInvoiceService {
       quotation.updatedBy = createdBy;
       await quotation.save();
 
+
+      const receiptData = {
+        customerId: createdBy,
+        quotationId: invoiceData.quotationId,
+        paymentMethod: invoiceData.customerPayment.paymentMethod || 'cash', // Use provided paymentMethod or default
+        receiptDate: new Date(),
+        amount: paymentAmount,
+        currency: quotation.currency,
+        description: invoiceData.notes || `Booking payment for quotation ${quotation.quotationNumber}`, // Use provided description or default
+      };
+
+      const receipt = await receiptService.createReceipt(receiptData, createdBy);
+
+      
       // Populate the created invoice
       const populatedInvoice = await CustomerInvoice.findById(invoice._id)
         .populate('createdBy', 'name email')
