@@ -243,6 +243,7 @@ class CustomerInvoiceService {
         totalAmount: quotation.totalAmount,
         currency: quotation.currency,
         notes: quotation.notes,
+        exportTo: quotation.exportTo,
         
         // From payload (fields not in quotation)
         moreExpense: invoiceData.moreExpense || { description: '', amount: 0 },
