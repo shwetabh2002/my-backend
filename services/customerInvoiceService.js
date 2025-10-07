@@ -944,7 +944,7 @@ class CustomerInvoiceService {
 
       // Fetch invoices with minimal data - much more efficient!
       const invoices = await CustomerInvoice.find(baseQuery)
-        .select('totalAmount vatAmount subtotal totalDiscount moreExpense additionalExpenses items status createdAt currency customer createdBy')
+        .select('totalAmount vatAmount subtotal totalDiscount moreExpense additionalExpenses items status createdAt currency customer createdBy exportTo')
         .lean();
 
       // Calculate analytics at code level - much faster and more maintainable
@@ -1004,6 +1004,18 @@ class CustomerInvoiceService {
               totalInvoices: c.totalInvoices,
               totalAmount: c.totalAmount,
               totalProfit: c.totalProfitWithoutVAT
+            })) : []
+          },
+          
+          // ExportTo filters
+          exportTo: {
+            value: null, // This would need to be added as a parameter if filtering by exportTo is needed
+            applied: false,
+            options: additionalAnalytics.salesByExportTo ? additionalAnalytics.salesByExportTo.map(e => e._id).filter(Boolean) : [],
+            availableExportTo: additionalAnalytics.salesByExportTo ? additionalAnalytics.salesByExportTo.map(e => ({
+              exportTo: e._id,
+              totalInvoices: e.count,
+              totalAmount: e.totalAmount
             })) : []
           },
           
@@ -1102,6 +1114,23 @@ class CustomerInvoiceService {
         }
       ]);
 
+      // Sales by exportTo (filter out null values)
+      const salesByExportTo = await CustomerInvoice.aggregate([
+        { 
+          $match: {
+            ...baseQuery,
+            exportTo: { $ne: null, $exists: true }
+          }
+        },
+        {
+          $group: {
+            _id: '$exportTo',
+            count: { $sum: 1 },
+            totalAmount: { $sum: '$totalAmount' }
+          }
+        }
+      ]);
+
       // Monthly trend (last 12 months)
       const monthlyTrend = await CustomerInvoice.aggregate([
         { $match: baseQuery },
@@ -1123,6 +1152,7 @@ class CustomerInvoiceService {
         topCustomers,
         salesByStatus,
         salesByCurrency,
+        salesByExportTo,
         monthlyTrend
       };
     } catch (error) {
@@ -1131,6 +1161,7 @@ class CustomerInvoiceService {
         topCustomers: [],
         salesByStatus: [],
         salesByCurrency: [],
+        salesByExportTo: [],
         monthlyTrend: []
       };
     }
