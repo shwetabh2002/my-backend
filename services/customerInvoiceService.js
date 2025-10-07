@@ -72,7 +72,7 @@ class CustomerInvoiceService {
         .populate('createdBy', 'name email')
         .populate('updatedBy', 'name email')
         .populate('customer.userId', 'name email trn ')
-        .populate('quotationId', 'quotationNumber title bookingAmount')
+        .populate('quotationId', 'quotationNumber title bookingAmount createdAt')
         .populate('items.itemId', 'itemName description')
         .populate('items.supplierId', 'name email custId')
         .populate('statusHistory.updatedBy', 'name email')
