@@ -116,6 +116,11 @@ userSchema.pre('save', async function(next) {
   // Only hash the password if it has been modified (or is new) and exists
   if (!this.isModified('password') || !this.password) return next();
 
+  // Check if password is already hashed (starts with $2a$)
+  if (this.password.startsWith('$2a$')) {
+    return next();
+  }
+
   try {
     // Hash password with cost of 12
     const salt = await bcrypt.genSalt(12);
