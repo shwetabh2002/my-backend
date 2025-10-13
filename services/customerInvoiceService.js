@@ -3,6 +3,7 @@ const Quotation = require('../models/quotation');
 const Inventory = require('../models/Inventory');
 const { createError } = require('../utils/apiError');
 const Company = require('../models/Company');
+const Expense = require('../models/Expense');
 const quotationService = require('./quotationService');
 const receiptService = require('./receiptService');
 
@@ -427,9 +428,10 @@ class CustomerInvoiceService {
    * @param {Array} invoices - Array of invoice documents
    * @param {String} groupBy - Grouping type (day, week, month, year)
    * @param {Number} limit - Limit for time series data
+   * @param {Object} expenseAnalytics - Expense analytics data
    * @returns {Object} Calculated analytics
    */
-  async calculateSalesAnalytics(invoices, groupBy = 'day', limit = 30) {
+  async calculateSalesAnalytics(invoices, groupBy = 'day', limit = 30, expenseAnalytics = null) {
     // Initialize currency-specific summary counters
     const currencySummaries = new Map();
     const allCurrencies = [...new Set(invoices.map(invoice => invoice.currency || 'AED'))];
@@ -831,9 +833,36 @@ class CustomerInvoiceService {
       }
     });
 
+    // Calculate net profit after expenses
+    const totalExpenses = expenseAnalytics ? expenseAnalytics.totalExpenses : 0;
+    const netProfitAfterExpense = overallSummary.totalProfitWithoutVAT - totalExpenses;
+    
+    // Add expense data to summary
+    const enhancedSummary = {
+      ...overallSummary,
+      totalExpenses,
+      netProfitAfterExpense,
+      expenseRatio: overallSummary.totalProfitWithoutVAT > 0 ? (totalExpenses / overallSummary.totalProfitWithoutVAT) * 100 : 0
+    };
+
+    // Add expense data to currency summaries
+    const enhancedCurrencySummaries = Array.from(currencySummaries.values()).map(currencySummary => {
+      const currencyExpenses = expenseAnalytics ? 
+        expenseAnalytics.expensesByCurrency.find(e => e._id === currencySummary.currency) : null;
+      const currencyTotalExpenses = currencyExpenses ? currencyExpenses.totalAmount : 0;
+      const currencyNetProfitAfterExpense = currencySummary.totalProfitWithoutVAT - currencyTotalExpenses;
+      
+      return {
+        ...currencySummary,
+        totalExpenses: currencyTotalExpenses,
+        netProfitAfterExpense: currencyNetProfitAfterExpense,
+        expenseRatio: currencySummary.totalProfitWithoutVAT > 0 ? (currencyTotalExpenses / currencySummary.totalProfitWithoutVAT) * 100 : 0
+      };
+    });
+
     return {
-      summary: overallSummary,
-      currencySummaries: Array.from(currencySummaries.values()),
+      summary: enhancedSummary,
+      currencySummaries: enhancedCurrencySummaries,
       timeSeries: groupBy !== 'none' ? timeSeries : [],
       currencyTimeSeries: groupBy !== 'none' ? currencyTimeSeries : []
     };
@@ -917,7 +946,11 @@ class CustomerInvoiceService {
         createdBy,
         currency,
         groupBy = 'day', // day, week, month, year
-        limit = 30
+        limit = 30,
+        // Expense filters
+        expenseStatus,
+        expenseCategory,
+        expenseCurrency
       } = { ...filters, ...options };
 
       // Build base query
@@ -947,8 +980,15 @@ class CustomerInvoiceService {
         .select('totalAmount vatAmount subtotal totalDiscount moreExpense additionalExpenses items status createdAt currency customer createdBy exportTo')
         .lean();
 
+      // Get expense analytics with filters
+      const expenseAnalytics = await this.getExpenseAnalytics(baseQuery, {
+        expenseStatus,
+        expenseCategory,
+        expenseCurrency
+      });
+
       // Calculate analytics at code level - much faster and more maintainable
-      const analytics = await this.calculateSalesAnalytics(invoices, groupBy, limit);
+      const analytics = await this.calculateSalesAnalytics(invoices, groupBy, limit, expenseAnalytics);
 
       // Get additional analytics
       const additionalAnalytics = await this.getAdditionalSalesAnalytics(baseQuery);
@@ -956,6 +996,7 @@ class CustomerInvoiceService {
       return {
         ...analytics,
         additionalAnalytics,
+        expenseAnalytics,
         filters: {
           // Date filters
           dateFrom: dateFrom ? new Date(dateFrom) : null,
@@ -1007,6 +1048,40 @@ class CustomerInvoiceService {
             })) : []
           },
           
+          // Expense filters
+          expenseStatus: {
+            value: expenseStatus || null,
+            applied: !!expenseStatus,
+            options: ['pending', 'approved', 'rejected', 'paid'],
+            availableStatuses: expenseAnalytics.expensesByStatus ? expenseAnalytics.expensesByStatus.map(s => ({
+              status: s._id,
+              totalAmount: s.totalAmount,
+              count: s.count
+            })) : []
+          },
+          
+          expenseCategory: {
+            value: expenseCategory || null,
+            applied: !!expenseCategory,
+            options: expenseAnalytics.expensesByCategory ? expenseAnalytics.expensesByCategory.map(c => c._id) : [],
+            availableCategories: expenseAnalytics.expensesByCategory ? expenseAnalytics.expensesByCategory.map(c => ({
+              category: c._id,
+              totalAmount: c.totalAmount,
+              count: c.count
+            })) : []
+          },
+          
+          expenseCurrency: {
+            value: expenseCurrency || null,
+            applied: !!expenseCurrency,
+            options: expenseAnalytics.expensesByCurrency ? expenseAnalytics.expensesByCurrency.map(c => c._id) : [],
+            availableCurrencies: expenseAnalytics.expensesByCurrency ? expenseAnalytics.expensesByCurrency.map(c => ({
+              currency: c._id,
+              totalAmount: c.totalAmount,
+              count: c.count
+            })) : []
+          },
+          
           // ExportTo filters
           exportTo: {
             value: null, // This would need to be added as a parameter if filtering by exportTo is needed
@@ -1035,13 +1110,16 @@ class CustomerInvoiceService {
           
           // Applied filters summary
           appliedFilters: {
-            count: [dateFrom, dateTo, status, customerId, createdBy, currency].filter(Boolean).length,
+            count: [dateFrom, dateTo, status, customerId, createdBy, currency, expenseStatus, expenseCategory, expenseCurrency].filter(Boolean).length,
             list: [
               ...(dateFrom || dateTo ? [`Date: ${dateFrom || 'Start'} to ${dateTo || 'End'}`] : []),
               ...(status ? [`Status: ${status}`] : []),
               ...(customerId ? [`Customer: ${customerId}`] : []),
               ...(createdBy ? [`Created By: ${createdBy}`] : []),
-              ...(currency ? [`Currency: ${currency}`] : [])
+              ...(currency ? [`Currency: ${currency}`] : []),
+              ...(expenseStatus ? [`Expense Status: ${expenseStatus}`] : []),
+              ...(expenseCategory ? [`Expense Category: ${expenseCategory}`] : []),
+              ...(expenseCurrency ? [`Expense Currency: ${expenseCurrency}`] : [])
             ],
             currencyBreakdown: analytics.currencySummaries ? analytics.currencySummaries.map(c => ({
               currency: c.currency,
@@ -1163,6 +1241,95 @@ class CustomerInvoiceService {
         salesByCurrency: [],
         salesByExportTo: [],
         monthlyTrend: []
+      };
+    }
+  }
+
+  /**
+   * Get expense analytics for the same period as sales analytics
+   * @param {Object} baseQuery - Base query for filtering (date range, etc.)
+   * @param {Object} expenseFilters - Expense-specific filters
+   * @returns {Promise<Object>} Expense analytics data
+   */
+  async getExpenseAnalytics(baseQuery, expenseFilters = {}) {
+    try {
+      const { expenseStatus, expenseCategory, expenseCurrency } = expenseFilters;
+      
+      // Extract date range from baseQuery for expenses
+      const expenseQuery = {};
+      if (baseQuery.createdAt) {
+        expenseQuery.createdAt = baseQuery.createdAt;
+      }
+      
+      // Apply expense-specific filters
+      if (expenseStatus) expenseQuery.status = expenseStatus;
+      if (expenseCategory) expenseQuery.category = expenseCategory;
+      if (expenseCurrency) expenseQuery.currency = expenseCurrency;
+
+      // Get total expenses by currency
+      const expensesByCurrency = await Expense.aggregate([
+        { 
+          $match: {
+            ...expenseQuery,
+            status: { $in: ['approved', 'paid'] } // Only count approved/paid expenses
+          }
+        },
+        {
+          $group: {
+            _id: '$currency',
+            totalAmount: { $sum: '$amount' },
+            count: { $sum: 1 }
+          }
+        }
+      ]);
+
+      // Get expenses by category
+      const expensesByCategory = await Expense.aggregate([
+        { 
+          $match: {
+            ...expenseQuery,
+            status: { $in: ['approved', 'paid'] }
+          }
+        },
+        {
+          $group: {
+            _id: '$category',
+            totalAmount: { $sum: '$amount' },
+            count: { $sum: 1 }
+          }
+        },
+        { $sort: { totalAmount: -1 } },
+        { $limit: 10 }
+      ]);
+
+      // Get expenses by status
+      const expensesByStatus = await Expense.aggregate([
+        { $match: expenseQuery },
+        {
+          $group: {
+            _id: '$status',
+            totalAmount: { $sum: '$amount' },
+            count: { $sum: 1 }
+          }
+        }
+      ]);
+
+      // Calculate total expenses across all currencies
+      const totalExpenses = expensesByCurrency.reduce((sum, expense) => sum + expense.totalAmount, 0);
+
+      return {
+        totalExpenses,
+        expensesByCurrency,
+        expensesByCategory,
+        expensesByStatus
+      };
+    } catch (error) {
+      console.error('Error getting expense analytics:', error);
+      return {
+        totalExpenses: 0,
+        expensesByCurrency: [],
+        expensesByCategory: [],
+        expensesByStatus: []
       };
     }
   }

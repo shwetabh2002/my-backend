@@ -76,18 +76,30 @@ const seedRoles = async () => {
       {
         name: 'SALES',
         permissions: [
+          'user:create',
           'user:read',
+          'user:update',
+          'user:delete',
+          'role:create',
+          'role:read',
+          'role:update',
+          'role:delete',
           'auth:login',
+          'inventory:create',
           'inventory:read',
           'inventory:update',
+          'inventory:delete',
+          'company:create',
           'company:read',
           'company:update',
+          'company:delete',
           'quotation:create',
           'quotation:read',
           'quotation:update',
+          'quotation:delete',
           'supplier:create',
-          'supplier:update',
           'supplier:read',
+          'supplier:update',
           'supplier:delete',
           'invoice:create',
           'invoice:read',
@@ -101,6 +113,7 @@ const seedRoles = async () => {
           'receipt:read',
           'receipt:update',
           'receipt:delete'
+
         ],
         description: 'Sales access with limited permissions'
       },
@@ -117,26 +130,44 @@ const seedRoles = async () => {
       {
         name: 'FINANCE',
         permissions: [
+          'user:create',
           'user:read',
-          'quotation:read',
-          'quotation:update',
-          'customer:read',
-          'customer:create',
-          'customer:update',
-          'invoice:read',
-          'invoice:create',
-          'invoice:update',
-          'expense:read',
-          'expense:create',
-          'expense:update',
-          'receipt:read',
-          'receipt:create',
-          'receipt:update',
+          'user:update',
+          'user:delete',
+          'role:create',
+          'role:read',
+          'role:update',
+          'role:delete',
+          'auth:login',
+          'inventory:create',
           'inventory:read',
+          'inventory:update',
+          'inventory:delete',
+          'company:create',
           'company:read',
           'company:update',
-          'auth:login',
-          'auth:profile'
+          'company:delete',
+          'quotation:create',
+          'quotation:read',
+          'quotation:update',
+          'quotation:delete',
+          'supplier:create',
+          'supplier:read',
+          'supplier:update',
+          'supplier:delete',
+          'invoice:create',
+          'invoice:read',
+          'invoice:update',
+          'invoice:delete',
+          'expense:create',
+          'expense:read',
+          'expense:update',
+          'expense:delete',
+          'receipt:create',
+          'receipt:read',
+          'receipt:update',
+          'receipt:delete'
+
         ],
         description: 'Finance role with access to financial data, invoices, quotations, receipts, and customer management'
       }
@@ -183,7 +214,7 @@ const seedAdminUser = async (adminRole) => {
   }
 };
 
-const seedSampleUsers = async (employeeRole, customerRole, supplierRole) => {
+const seedSampleUsers = async (employeeRole, financeRole, customerRole, supplierRole) => {
   try {
     // Check if sample users already exist
     const existingUsers = await User.countDocuments({ email: { $regex: /sample/ } });
@@ -203,6 +234,17 @@ const seedSampleUsers = async (employeeRole, customerRole, supplierRole) => {
         status: 'active',
         roleIds: [employeeRole._id],
         address: '123 Main St, Anytown, USA'
+      },
+      {
+        name: 'Finance Manager',
+        countryCode: '+1',
+        email: 'finance@example.com',
+        phone: '+1-555-0001',
+        password: 'finance123',
+        type: 'employee',
+        status: 'active',
+        roleIds: [financeRole._id],
+        address: '456 Finance St, Anytown, USA'
       },
       {
         name: 'Jane Customer',
@@ -273,19 +315,21 @@ const runSeed = async () => {
     // Get role references
     const adminRole = roles.find(r => r.name === 'ADMIN');
     const employeeRole = roles.find(r => r.name === 'SALES');
+    const financeRole = roles.find(r => r.name === 'FINANCE');
     const customerRole = roles.find(r => r.name === 'CUSTOMER');
     const supplierRole = roles.find(r => r.name === 'SUPPLIER');
     
     // Seed admin user
     await seedAdminUser(adminRole);
     
-    // Seed sample users
-    await seedSampleUsers(employeeRole, customerRole, supplierRole);
+    // Seed sample users (including finance user)
+    await seedSampleUsers(employeeRole, financeRole, customerRole, supplierRole);
     
     console.log('Database seeding completed successfully!');
     console.log('\nDefault credentials:');
     console.log('Admin: admin@example.com / admin123');
-    console.log('Employee: john.employee@example.com / employee123');
+    console.log('Finance: finance@example.com / finance123');
+    console.log('Sales: john.employee@example.com / employee123');
     console.log('Customer: jane.customer@example.com / customer123');
     
     process.exit(0);

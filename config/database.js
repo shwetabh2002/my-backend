@@ -6,13 +6,25 @@ const connectDB = async () => {
       const conn = await mongoose.connect(process.env.MONGODB_URI_PRODUCTION, {
         useNewUrlParser: true,
         useUnifiedTopology: true,
+        maxPoolSize: 20,        // Maximum number of connections in the pool
+        minPoolSize: 5,         // Minimum number of connections in the pool
+        maxIdleTimeMS: 30000,   // Close connections after 30 seconds of inactivity
+        serverSelectionTimeoutMS: 5000, // How long to try selecting a server
+        socketTimeoutMS: 45000, // How long to wait for a response
+        connectTimeoutMS: 10000, // How long to wait for initial connection
       });
       console.log(`MongoDB Connected: ${conn.connection.host} to connection string ${conn.connection.name}`);
 
     } else {
       const conn = await mongoose.connect(process.env.MONGODB_URI, {
-      useNewUrlParser: true,
+        useNewUrlParser: true,
         useUnifiedTopology: true,
+        maxPoolSize: 20,        // Maximum number of connections in the pool
+        minPoolSize: 5,         // Minimum number of connections in the pool
+        maxIdleTimeMS: 30000,   // Close connections after 30 seconds of inactivity
+        serverSelectionTimeoutMS: 5000, // How long to try selecting a server
+        socketTimeoutMS: 45000, // How long to wait for a response
+        connectTimeoutMS: 10000, // How long to wait for initial connection
       });
       console.log(`MongoDB Connected: ${conn.connection.host} to connection string ${conn.connection.name}`);
 

@@ -35,6 +35,11 @@ const seedQuotations = async () => {
       console.log('No inventory items found. Please run inventory seed first.');
       return;
     }
+    if (inventoryItemsWithSupplier.length < 2) {
+      console.log('Not enough inventory items with suppliers found. Using regular inventory items instead.');
+      // Use regular inventory items as fallback
+      inventoryItemsWithSupplier.push(...inventoryItems.slice(0, 2 - inventoryItemsWithSupplier.length));
+    }
 
     // Check if quotations already exist
     const existingQuotations = await Quotation.countDocuments();
@@ -125,57 +130,57 @@ const seedQuotations = async () => {
           trn: 'TRN987654321'
         },
         validTill: new Date(Date.now() + 15 * 24 * 60 * 60 * 1000), // 15 days from now
-        status: 'sent',
+        status: 'draft',
         statusHistory: [{
-          status: 'sent',
+          status: 'draft',
           date: new Date()
         }],
         items: [
           {
-            itemId: inventoryItemsWithSupplier[1]._id,
-            supplierId: inventoryItemsWithSupplier[1].supplierId,
-            name: inventoryItemsWithSupplier[1].name,
-            type: inventoryItemsWithSupplier[1].type,
-            category: inventoryItemsWithSupplier[1].category,
-            subcategory: inventoryItemsWithSupplier[1].subcategory,
-            brand: inventoryItemsWithSupplier[1].brand,
-            model: inventoryItemsWithSupplier[1].model,
-            year: inventoryItemsWithSupplier[1].year,
-            color: inventoryItemsWithSupplier[1].color,
-            sku: inventoryItemsWithSupplier[1].sku,
-            description: inventoryItemsWithSupplier[1].description,
-            costPrice: inventoryItemsWithSupplier[1].costPrice,
-            sellingPrice: inventoryItemsWithSupplier[1].sellingPrice,
-            condition: inventoryItemsWithSupplier[1].condition,
-            status: inventoryItemsWithSupplier[1].status,
-            dimensions: inventoryItemsWithSupplier[1].dimensions,
+            itemId: inventoryItemsWithSupplier[1]?._id || inventoryItems[1]?._id,
+            supplierId: inventoryItemsWithSupplier[1]?.supplierId || null,
+            name: inventoryItemsWithSupplier[1]?.name || inventoryItems[1]?.name,
+            type: inventoryItemsWithSupplier[1]?.type || inventoryItems[1]?.type,
+            category: inventoryItemsWithSupplier[1]?.category || inventoryItems[1]?.category,
+            subcategory: inventoryItemsWithSupplier[1]?.subcategory || inventoryItems[1]?.subcategory,
+            brand: inventoryItemsWithSupplier[1]?.brand || inventoryItems[1]?.brand,
+            model: inventoryItemsWithSupplier[1]?.model || inventoryItems[1]?.model,
+            year: inventoryItemsWithSupplier[1]?.year || inventoryItems[1]?.year,
+            color: inventoryItemsWithSupplier[1]?.color || inventoryItems[1]?.color,
+            sku: inventoryItemsWithSupplier[1]?.sku || inventoryItems[1]?.sku,
+            description: inventoryItemsWithSupplier[1]?.description || inventoryItems[1]?.description,
+            costPrice: inventoryItemsWithSupplier[1]?.costPrice || inventoryItems[1]?.costPrice,
+            sellingPrice: inventoryItemsWithSupplier[1]?.sellingPrice || inventoryItems[1]?.sellingPrice,
+            condition: inventoryItemsWithSupplier[1]?.condition || inventoryItems[1]?.condition,
+            status: inventoryItemsWithSupplier[1]?.status || inventoryItems[1]?.status,
+            dimensions: inventoryItemsWithSupplier[1]?.dimensions || inventoryItems[1]?.dimensions,
             quantity: 2,
-            unitPrice: inventoryItemsWithSupplier[1].sellingPrice,
-            totalPrice: inventoryItemsWithSupplier[1].sellingPrice * 2,
+            unitPrice: inventoryItemsWithSupplier[1]?.sellingPrice || inventoryItems[1]?.sellingPrice,
+            totalPrice: (inventoryItemsWithSupplier[1]?.sellingPrice || inventoryItems[1]?.sellingPrice) * 2,
             vinNumbers: [
               {
                 status: 'hold',
-                chasisNumber: inventoryItemsWithSupplier[1].vinNumber[0].chasisNumber
+                chasisNumber: inventoryItemsWithSupplier[1]?.vinNumber?.[0]?.chasisNumber || inventoryItems[1]?.vinNumber?.[0]?.chasisNumber
               },
               {
                 status: 'hold',
-                chasisNumber: inventoryItemsWithSupplier[1].vinNumber[1].chasisNumber
+                chasisNumber: inventoryItemsWithSupplier[1]?.vinNumber?.[1]?.chasisNumber || inventoryItems[1]?.vinNumber?.[1]?.chasisNumber
               }
             ],
-            interiorColor: inventoryItemsWithSupplier[1].interiorColor
+            interiorColor: inventoryItemsWithSupplier[1]?.interiorColor || inventoryItems[1]?.interiorColor
           }
         ],
         statusHistory: [{
-          status: 'sent',
+          status: 'draft',
           date: new Date()
         }],
         totalDiscount: 1000,
         VAT: 5,
         currency: 'AED',
         exchangeRate: 1,
-        subtotal: inventoryItemsWithSupplier[1].sellingPrice * 2,
-        vatAmount: (inventoryItemsWithSupplier[1].sellingPrice * 2 - 1000) * 0.05,
-        totalAmount: (inventoryItemsWithSupplier[1].sellingPrice * 2 - 1000) * 1.05,
+        subtotal: (inventoryItemsWithSupplier[1]?.sellingPrice || inventoryItems[1]?.sellingPrice) * 2,
+        vatAmount: ((inventoryItemsWithSupplier[1]?.sellingPrice || inventoryItems[1]?.sellingPrice) * 2 - 1000) * 0.05,
+        totalAmount: ((inventoryItemsWithSupplier[1]?.sellingPrice || inventoryItems[1]?.sellingPrice) * 2 - 1000) * 1.05,
         bookingAmount: 0, // Add bookingAmount field
         notes: 'Bulk order with discount applied',
         exportTo: 'Abu Dhabi, UAE',
@@ -189,8 +194,8 @@ const seedQuotations = async () => {
     
     // Log summary
     const draftCount = createdQuotations.filter(q => q.status === 'draft').length;
-    const sentCount = createdQuotations.filter(q => q.status === 'sent').length;
-    console.log(`Draft: ${draftCount}, Sent: ${sentCount}`);
+    const reviewCount = createdQuotations.filter(q => q.status === 'review').length;
+    console.log(`Draft: ${draftCount}, Review: ${reviewCount}`);
     
     return createdQuotations;
   } catch (error) {
