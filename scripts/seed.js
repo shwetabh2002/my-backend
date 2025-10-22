@@ -22,10 +22,10 @@ const connectDB = async () => {
 const seedRoles = async () => {
   try {
     // Check if roles already exist
-    const existingRoles = await Role.countDocuments();
-    if (existingRoles > 0) {
+    const existingRoles = await Role.find();
+    if (existingRoles.length > 0) {
       console.log('Roles already exist, skipping role creation');
-      return;
+      return existingRoles;
     }
 
     const roles = [
@@ -183,7 +183,7 @@ const seedRoles = async () => {
   }
 };
 
-const seedAdminUser = async (adminRole) => {
+const seedAdminUser = async (adminRole, employeeRole, financeRole) => {
   try {
     // Check if admin user already exists
     const existingAdmin = await User.findOne({ email: 'admin@example.com' });
@@ -203,9 +203,35 @@ const seedAdminUser = async (adminRole) => {
       address: '123 Main St, Anytown, USA',
       phone: '+1-555-0000'
     });
+    const salesUser = new User({
+      name: 'Sales User',
+      countryCode: '+1',
+      email: 'sales@example.com',
+      password: 'sales123',
+      type: 'employee',
+      status: 'active',
+      roleIds: [employeeRole._id],
+      address: '123 Main St, Anytown, USA',
+      phone: '+1-555-0000'
+    });
+    const financeUser = new User({
+      name: 'Finance User',
+      countryCode: '+1',
+      email: 'finance@example.com',
+      password: 'finance123',
+      type: 'employee',
+      status: 'active',
+      roleIds: [financeRole._id],
+      address: '123 Main St, Anytown, USA',
+      phone: '+1-555-0000'
+    });
+    await salesUser.save();
+    await financeUser.save();
 
     await adminUser.save();
     console.log('Admin user created successfully');
+    console.log('Sales user created successfully');
+    console.log('Finance user created successfully');
     
     return adminUser;
   } catch (error) {
@@ -225,71 +251,15 @@ const seedSampleUsers = async (employeeRole, financeRole, customerRole, supplier
 
     const sampleUsers = [
       {
-        name: 'John Employee',
-        countryCode: '+1',
-        email: 'john.employee@example.com',
-        phone: '+1-555-0123',
-        password: 'employee123',
-        type: 'employee',
-        status: 'active',
-        roleIds: [employeeRole._id],
-        address: '123 Main St, Anytown, USA'
-      },
-      {
-        name: 'Finance Manager',
-        countryCode: '+1',
-        email: 'finance@example.com',
-        phone: '+1-555-0001',
-        password: 'finance123',
-        type: 'employee',
-        status: 'active',
-        roleIds: [financeRole._id],
-        address: '456 Finance St, Anytown, USA'
-      },
-      {
-        name: 'Jane Customer',
-        countryCode: '+1',
-        email: 'jane.customer@example.com',
-        phone: '+1-555-0456',
-        custId: 'CUS-001',
-        type: 'customer',
-        status: 'active',
-        roleIds: [customerRole._id],
-        address: '123 Main St, Anytown, USA'
-      },
-      {
-        name: 'amy customer',
-        countryCode: '+1',
-        email: 'amy@example.com',
-        phone: '+971-50-1234567',
-        custId: 'CUS-002',
-        type: 'customer',
-        status: 'active',
-        roleIds: [customerRole._id],
-        address: 'dubai, california, UAE',
-        trn: '1234567890'
-      },
-      {
-        name: 'Auto Parts Supplier',
+        name: 'Test Supplier',
         countryCode: '+971',
-        email: 'supplier1@autoparts.com',
+        email: 'test.supplier@example.com',
         phone: '+971-50-1234567',
         custId: 'SUP-001',
         type: 'supplier',
         status: 'active',
         roleIds: [supplierRole._id],
         address: 'Dubai Industrial City, UAE'
-      },
-      {
-        name: 'Car Accessories Ltd',
-        countryCode: '+971',
-        email: 'supplier2@accessories.com',
-        phone: '+971-50-7654321',
-        custId: 'SUP-002',
-        type: 'supplier',
-        status: 'active',
-        roleIds: [supplierRole._id],
-        address: 'Sharjah Industrial Area, UAE'
       }
     ];
 
@@ -320,7 +290,7 @@ const runSeed = async () => {
     const supplierRole = roles.find(r => r.name === 'SUPPLIER');
     
     // Seed admin user
-    await seedAdminUser(adminRole);
+    await seedAdminUser(adminRole, employeeRole, financeRole);
     
     // Seed sample users (including finance user)
     await seedSampleUsers(employeeRole, financeRole, customerRole, supplierRole);
@@ -328,9 +298,9 @@ const runSeed = async () => {
     console.log('Database seeding completed successfully!');
     console.log('\nDefault credentials:');
     console.log('Admin: admin@example.com / admin123');
+    console.log('Sales: sales@example.com / sales123');
     console.log('Finance: finance@example.com / finance123');
-    console.log('Sales: john.employee@example.com / employee123');
-    console.log('Customer: jane.customer@example.com / customer123');
+    console.log('Supplier: test.supplier@example.com (no password)');
     
     process.exit(0);
   } catch (error) {
