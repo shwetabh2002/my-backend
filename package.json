@@ -14,7 +14,7 @@
     "seed:quotations": "node scripts/seedQuotations.js",
     "cleanup:quotations": "node scripts/cleanupQuotations.js",
     "setup": "node scripts/setup.js",
-    "build": "npm install && npm run setup"
+    "build": "npm install && npm run setup && npm run seed"
   },
   "keywords": [
     "express",
