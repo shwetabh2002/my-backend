@@ -108,6 +108,7 @@ const seedQuotations = async () => {
         totalDiscount: 0,
         VAT: 0,
         currency: 'AED',
+        bankCurrency: 'AED',
         exchangeRate: 1,
         vatAmount: inventoryItems[0].sellingPrice * 0.05, // Add vatAmount
         totalAmount: inventoryItems[0].sellingPrice * 1.05, // Including 5% VAT
@@ -177,6 +178,7 @@ const seedQuotations = async () => {
         totalDiscount: 1000,
         VAT: 5,
         currency: 'AED',
+        bankCurrency: 'AED',
         exchangeRate: 1,
         subtotal: (inventoryItemsWithSupplier[1]?.sellingPrice || inventoryItems[1]?.sellingPrice) * 2,
         vatAmount: ((inventoryItemsWithSupplier[1]?.sellingPrice || inventoryItems[1]?.sellingPrice) * 2 - 1000) * 0.05,

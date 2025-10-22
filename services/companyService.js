@@ -675,7 +675,8 @@ class CompanyService {
         currency: company.currency,
         paymentTerms: company.paymentTerms,
         socialMedia: company.socialMedia,
-        termCondition:company.termCondition
+        termCondition:company.termCondition,
+        bankDetails:company.bankDetails
       };
     } catch (error) {
       throw error;

@@ -945,6 +945,9 @@ const schemas = {
       'string.length': 'Currency must be exactly 3 characters',
       'string.uppercase': 'Currency must be uppercase'
     }),
+    bankCurrency: Joi.string().uppercase().default('AED').messages({
+      'string.uppercase': 'Bank currency must be uppercase'
+    }),
     notes: Joi.string().max(1000).optional().messages({
       'string.max': 'Notes cannot exceed 1000 characters'
     }),

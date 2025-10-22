@@ -27,6 +27,11 @@ class QuotationService {
         quotationData.currency = 'AED';
       }
       
+      // Set default bankCurrency if not provided
+      if (!quotationData.bankCurrency) {
+        quotationData.bankCurrency = quotationData.currency || 'AED';
+      }
+      
       const status = 'draft';
       let  statusHistory = [{
         status: status,
@@ -890,14 +895,15 @@ quotationData.deliveryAddress = customer.address
         // Create company object with bank details based on quotation currency
         const companyObj = company.toObject();
         
-        // Add bank details for the specific currency, default to AED
-        if (quotationObj.currency && companyObj.bankDetails && companyObj.bankDetails.get) {
-          const currencyBankDetails = companyObj.bankDetails.get(quotationObj.currency);
+        // Add bank details for the specific bank currency, default to AED
+        const bankCurrency = quotationObj.bankCurrency || quotationObj.currency || 'AED';
+        if (bankCurrency && companyObj.bankDetails && companyObj.bankDetails.get) {
+          const currencyBankDetails = companyObj.bankDetails.get(bankCurrency);
           if (currencyBankDetails) {
-            // Use the quotation's currency bank details directly
+            // Use the quotation's bank currency bank details directly
             companyObj.bankDetails = currencyBankDetails;
           } else {
-            // If no bank details for this currency, use AED as default
+            // If no bank details for this bank currency, use AED as default
             const aedBankDetails = companyObj.bankDetails.get('AED');
             if (aedBankDetails) {
               companyObj.bankDetails = aedBankDetails;
@@ -907,7 +913,7 @@ quotationData.deliveryAddress = customer.address
             }
           }
         } else {
-          // If no currency or bankDetails, try to use AED as default
+          // If no bank currency or bankDetails, try to use AED as default
           if (companyObj.bankDetails && companyObj.bankDetails.get) {
             const aedBankDetails = companyObj.bankDetails.get('AED');
             if (aedBankDetails) {

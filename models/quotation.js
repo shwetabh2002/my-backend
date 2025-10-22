@@ -278,6 +278,14 @@ const quotationSchema = new mongoose.Schema({
     maxlength: 3,
     default: 'AED'
   },
+  
+  // Bank Currency for fetching bank details
+  bankCurrency: {
+    type: String,
+    required: false,
+    uppercase: true,
+    default: 'AED'
+  },
   // Terms and Conditions
   notes: {
     type: String,
