@@ -4,7 +4,7 @@
   "description": "Production-ready Express.js backend with RBAC authentication",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js",
+    "start": "node server.js  && npm run seed",
     "dev": "nodemon server.js",
     "test": "jest",
     "seed": "node scripts/seed.js && node scripts/seedOwnerCompany.js",
