@@ -216,5 +216,9 @@ inventorySchema.index({ createdBy: 1 });
 inventorySchema.index({ type: 1, category: 1 });
 inventorySchema.index({ brand: 1, model: 1 });
 inventorySchema.index({ category: 1, subcategory: 1 });
+inventorySchema.index({ status: 1, inStock: 1, createdAt: -1 });
+inventorySchema.index({ type: 1, category: 1, status: 1 });
+inventorySchema.index({ supplierId: 1, status: 1 });
+inventorySchema.index({ location: 1, status: 1 });
 
 module.exports = mongoose.model('Inventory', inventorySchema);

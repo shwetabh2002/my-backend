@@ -336,35 +336,12 @@ class ExpenseService {
    */
   async calculateExpenseSummary(query = {}) {
     try {
-      const pipeline = [
-        { $match: query },
-        {
-          $group: {
-            _id: null,
-            totalAmount: { $sum: '$amount' },
-            totalExpenses: { $sum: 1 },
-            averageAmount: { $avg: '$amount' },
-            minAmount: { $min: '$amount' },
-            maxAmount: { $max: '$amount' },
-            byStatus: {
-              $push: {
-                status: '$status',
-                amount: '$amount'
-              }
-            },
-            byCategory: {
-              $push: {
-                category: '$category',
-                amount: '$amount'
-              }
-            }
-          }
-        }
-      ];
+      // Get all expenses with minimal data - much faster than aggregation
+      const expenses = await Expense.find(query)
+        .select('amount status category')
+        .lean();
 
-      const result = await Expense.aggregate(pipeline);
-      
-      if (result.length === 0) {
+      if (expenses.length === 0) {
         return {
           totalAmount: 0,
           totalExpenses: 0,
@@ -376,34 +353,42 @@ class ExpenseService {
         };
       }
 
-      const summary = result[0];
-      
+      // Calculate summary in JavaScript - much faster
+      const amounts = expenses.map(exp => exp.amount).filter(amount => amount > 0);
+      const totalAmount = amounts.reduce((sum, amount) => sum + amount, 0);
+      const totalExpenses = expenses.length;
+      const averageAmount = totalAmount / totalExpenses;
+      const minAmount = Math.min(...amounts);
+      const maxAmount = Math.max(...amounts);
+
       // Process status breakdown
       const statusBreakdown = {};
-      summary.byStatus.forEach(item => {
-        if (!statusBreakdown[item.status]) {
-          statusBreakdown[item.status] = { count: 0, amount: 0 };
+      expenses.forEach(expense => {
+        const status = expense.status || 'unknown';
+        if (!statusBreakdown[status]) {
+          statusBreakdown[status] = { count: 0, amount: 0 };
         }
-        statusBreakdown[item.status].count++;
-        statusBreakdown[item.status].amount += item.amount;
+        statusBreakdown[status].count++;
+        statusBreakdown[status].amount += expense.amount || 0;
       });
 
       // Process category breakdown
       const categoryBreakdown = {};
-      summary.byCategory.forEach(item => {
-        if (!categoryBreakdown[item.category]) {
-          categoryBreakdown[item.category] = { count: 0, amount: 0 };
+      expenses.forEach(expense => {
+        const category = expense.category || 'unknown';
+        if (!categoryBreakdown[category]) {
+          categoryBreakdown[category] = { count: 0, amount: 0 };
         }
-        categoryBreakdown[item.category].count++;
-        categoryBreakdown[item.category].amount += item.amount;
+        categoryBreakdown[category].count++;
+        categoryBreakdown[category].amount += expense.amount || 0;
       });
 
       return {
-        totalAmount: summary.totalAmount,
-        totalExpenses: summary.totalExpenses,
-        averageAmount: Math.round(summary.averageAmount * 100) / 100,
-        minAmount: summary.minAmount,
-        maxAmount: summary.maxAmount,
+        totalAmount,
+        totalExpenses,
+        averageAmount: Math.round(averageAmount * 100) / 100,
+        minAmount,
+        maxAmount,
         byStatus: statusBreakdown,
         byCategory: categoryBreakdown
       };

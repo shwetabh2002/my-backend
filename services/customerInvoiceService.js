@@ -85,51 +85,34 @@ class CustomerInvoiceService {
       // Get total count for pagination
       const total = await CustomerInvoice.countDocuments(query);
 
-      // Get summary data for dynamic filters
-      const summaryData = await CustomerInvoice.aggregate([
-        { $match: {} }, // Match all invoices for summary
-        {
-          $lookup: {
-            from: 'users',
-            localField: 'createdBy',
-            foreignField: '_id',
-            as: 'creatorInfo'
-          }
-        },
-        {
-          $group: {
-            _id: null,
-            totalInvoices: { $sum: 1 },
-            statuses: { $addToSet: '$status' },
-            currencies: { $addToSet: '$currency' },
-            customers: { $addToSet: '$customer.custId' },
-            creators: { 
-              $addToSet: { $arrayElemAt: ['$creatorInfo.name', 0] }
-            },
-            // Date ranges
-            minCreatedDate: { $min: '$createdAt' },
-            maxCreatedDate: { $max: '$createdAt' },
-            minDueDate: { $min: '$dueDate' },
-            maxDueDate: { $max: '$dueDate' },
-            // Financial summary
-            totalAmount: { $sum: '$finalTotal' },
-            averageAmount: { $avg: '$finalTotal' }
-          }
-        }
-      ]);
+      // Get summary data for dynamic filters - calculate in JavaScript instead of aggregation
+      const allInvoices = await CustomerInvoice.find({})
+        .select('status currency customer.custId createdBy createdAt dueDate finalTotal')
+        .populate('createdBy', 'name')
+        .lean();
 
-      const summary = summaryData[0] || {
-        totalInvoices: 0,
-        statuses: [],
-        currencies: [],
-        customers: [],
-        creators: [],
-        minCreatedDate: null,
-        maxCreatedDate: null,
-        minDueDate: null,
-        maxDueDate: null,
-        totalAmount: 0,
-        averageAmount: 0
+      // Calculate summary in JavaScript - much faster
+      const statuses = [...new Set(allInvoices.map(inv => inv.status).filter(Boolean))];
+      const currencies = [...new Set(allInvoices.map(inv => inv.currency).filter(Boolean))];
+      const customers = [...new Set(allInvoices.map(inv => inv.customer?.custId).filter(Boolean))];
+      const creators = [...new Set(allInvoices.map(inv => inv.createdBy?.name).filter(Boolean))];
+      
+      const dates = allInvoices.map(inv => inv.createdAt).filter(Boolean);
+      const dueDates = allInvoices.map(inv => inv.dueDate).filter(Boolean);
+      const amounts = allInvoices.map(inv => inv.finalTotal).filter(amount => amount > 0);
+      
+      const summary = {
+        totalInvoices: allInvoices.length,
+        statuses,
+        currencies,
+        customers,
+        creators,
+        minCreatedDate: dates.length > 0 ? new Date(Math.min(...dates)) : null,
+        maxCreatedDate: dates.length > 0 ? new Date(Math.max(...dates)) : null,
+        minDueDate: dueDates.length > 0 ? new Date(Math.min(...dueDates)) : null,
+        maxDueDate: dueDates.length > 0 ? new Date(Math.max(...dueDates)) : null,
+        totalAmount: amounts.reduce((sum, amount) => sum + amount, 0),
+        averageAmount: amounts.length > 0 ? amounts.reduce((sum, amount) => sum + amount, 0) / amounts.length : 0
       };
 
       const result = {

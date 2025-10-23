@@ -2710,61 +2710,92 @@ quotationData.deliveryAddress = customer.address
    */
   async getAdditionalQuotationAnalytics(baseQuery) {
     try {
-      // Top customers by quotations and profit
-      const topCustomers = await Quotation.aggregate([
-        { $match: baseQuery },
-        {
-          $group: {
-            _id: '$customer.custId',
-            customerName: { $first: '$customer.name' },
-            totalAmount: { $sum: '$totalAmount' },
-            quotationCount: { $sum: 1 }
-          }
-        },
-        { $sort: { totalAmount: -1 } },
-        { $limit: 10 }
-      ]);
+      // Get all quotations with minimal data - much faster than aggregation
+      const quotations = await Quotation.find(baseQuery)
+        .select('customer.custId customer.name totalAmount status currency createdAt')
+        .lean();
 
-      // Quotations by status
-      const quotationsByStatus = await Quotation.aggregate([
-        { $match: baseQuery },
-        {
-          $group: {
-            _id: '$status',
-            count: { $sum: 1 },
-            totalAmount: { $sum: '$totalAmount' }
+      // Calculate top customers in JavaScript - much faster
+      const customerMap = new Map();
+      quotations.forEach(quote => {
+        const custId = quote.customer?.custId;
+        if (custId) {
+          if (!customerMap.has(custId)) {
+            customerMap.set(custId, {
+              _id: custId,
+              customerName: quote.customer?.name || 'Unknown',
+              totalAmount: 0,
+              quotationCount: 0
+            });
           }
+          const customer = customerMap.get(custId);
+          customer.totalAmount += quote.totalAmount || 0;
+          customer.quotationCount += 1;
         }
-      ]);
+      });
+      const topCustomers = Array.from(customerMap.values())
+        .sort((a, b) => b.totalAmount - a.totalAmount)
+        .slice(0, 10);
 
-      // Quotations by currency
-      const quotationsByCurrency = await Quotation.aggregate([
-        { $match: baseQuery },
-        {
-          $group: {
-            _id: '$currency',
-            count: { $sum: 1 },
-            totalAmount: { $sum: '$totalAmount' }
-          }
+      // Calculate quotations by status in JavaScript
+      const statusMap = new Map();
+      quotations.forEach(quote => {
+        const status = quote.status || 'unknown';
+        if (!statusMap.has(status)) {
+          statusMap.set(status, {
+            _id: status,
+            count: 0,
+            totalAmount: 0
+          });
         }
-      ]);
+        const statusData = statusMap.get(status);
+        statusData.count += 1;
+        statusData.totalAmount += quote.totalAmount || 0;
+      });
+      const quotationsByStatus = Array.from(statusMap.values());
 
-      // Monthly trend (last 12 months)
-      const monthlyTrend = await Quotation.aggregate([
-        { $match: baseQuery },
-        {
-          $group: {
-            _id: {
-              year: { $year: '$createdAt' },
-              month: { $month: '$createdAt' }
-            },
-            count: { $sum: 1 },
-            totalAmount: { $sum: '$totalAmount' }
-          }
-        },
-        { $sort: { '_id.year': 1, '_id.month': 1 } },
-        { $limit: 12 }
-      ]);
+      // Calculate quotations by currency in JavaScript
+      const currencyMap = new Map();
+      quotations.forEach(quote => {
+        const currency = quote.currency || 'AED';
+        if (!currencyMap.has(currency)) {
+          currencyMap.set(currency, {
+            _id: currency,
+            count: 0,
+            totalAmount: 0
+          });
+        }
+        const currencyData = currencyMap.get(currency);
+        currencyData.count += 1;
+        currencyData.totalAmount += quote.totalAmount || 0;
+      });
+      const quotationsByCurrency = Array.from(currencyMap.values());
+
+      // Calculate monthly trend in JavaScript
+      const monthlyMap = new Map();
+      quotations.forEach(quote => {
+        const date = new Date(quote.createdAt);
+        const year = date.getFullYear();
+        const month = date.getMonth() + 1;
+        const key = `${year}-${month}`;
+        
+        if (!monthlyMap.has(key)) {
+          monthlyMap.set(key, {
+            _id: { year, month },
+            count: 0,
+            totalAmount: 0
+          });
+        }
+        const monthData = monthlyMap.get(key);
+        monthData.count += 1;
+        monthData.totalAmount += quote.totalAmount || 0;
+      });
+      const monthlyTrend = Array.from(monthlyMap.values())
+        .sort((a, b) => {
+          if (a._id.year !== b._id.year) return a._id.year - b._id.year;
+          return a._id.month - b._id.month;
+        })
+        .slice(-12); // Last 12 months
 
       return {
         topCustomers,

@@ -750,69 +750,44 @@ class InventoryService {
    */
   async getInventorySummary(baseQuery = {}) {
     try {
-      const pipeline = [
-        { $match: baseQuery },
-        {
-          $group: {
-            _id: null,
-            types: { $addToSet: { $toLower: '$type' } },
-            categories: { $addToSet: { $toLower: '$category' } },
-            subcategories: { $addToSet: { $toLower: '$subcategory' } },
-            brands: { $addToSet: { $toLower: '$brand' } },
-            models: { $addToSet: { $toLower: '$model' } },
-            years: { $addToSet: '$year' },
-            colors: { $addToSet: { $toLower: '$color' } },
-            interiorColors: { $addToSet: { $toLower: '$interiorColor' } },
-            conditions: { $addToSet: { $toLower: '$condition' } },
-            statuses: { $addToSet: { $toLower: '$status' } },
-            warehouses: { $addToSet: { $toLower: '$location.warehouse' } },
-            allTags: { $addToSet: '$tags' }
-          }
-        },
-        {
-          $project: {
-            _id: 0,
-            types: { $filter: { input: '$types', cond: { $ne: ['$$this', null] } } },
-            categories: { $filter: { input: '$categories', cond: { $ne: ['$$this', null] } } },
-            subcategories: { $filter: { input: '$subcategories', cond: { $ne: ['$$this', null] } } },
-            brands: { $filter: { input: '$brands', cond: { $ne: ['$$this', null] } } },
-            models: { $filter: { input: '$models', cond: { $ne: ['$$this', null] } } },
-            years: { $filter: { input: '$years', cond: { $ne: ['$$this', null] } } },
-            colors: { $filter: { input: '$colors', cond: { $ne: ['$$this', null] } } },
-            interiorColors: { $filter: { input: '$interiorColors', cond: { $ne: ['$$this', null] } } },
-            conditions: { $filter: { input: '$conditions', cond: { $ne: ['$$this', null] } } },
-            statuses: { $filter: { input: '$statuses', cond: { $ne: ['$$this', null] } } },
-            warehouses: { $filter: { input: '$warehouses', cond: { $ne: ['$$this', null] } } },
-            allTags: { 
-              $reduce: { 
-                input: '$allTags', 
-                initialValue: [], 
-                in: { 
-                  $setUnion: [
-                    '$$value', 
-                    { $map: { input: '$$this', as: 'tag', in: { $toLower: '$$tag' } } }
-                  ] 
-                } 
-              } 
-            }
-          }
-        }
-      ];
+      // Get all inventory items with minimal data - much faster than aggregation
+      const items = await Inventory.find(baseQuery)
+        .select('type category subcategory brand model year color interiorColor condition status location.warehouse tags')
+        .lean();
 
-      const result = await Inventory.aggregate(pipeline);
-      return result[0] || {
-        types: [],
-        categories: [],
-        subcategories: [],
-        brands: [],
-        models: [],
-        years: [],
-        colors: [],
-        interiorColors: [],
-        conditions: [],
-        statuses: [],
-        warehouses: [],
-        allTags: []
+      // Calculate summary in JavaScript - much faster
+      const types = [...new Set(items.map(item => item.type?.toLowerCase()).filter(Boolean))];
+      const categories = [...new Set(items.map(item => item.category?.toLowerCase()).filter(Boolean))];
+      const subcategories = [...new Set(items.map(item => item.subcategory?.toLowerCase()).filter(Boolean))];
+      const brands = [...new Set(items.map(item => item.brand?.toLowerCase()).filter(Boolean))];
+      const models = [...new Set(items.map(item => item.model?.toLowerCase()).filter(Boolean))];
+      const years = [...new Set(items.map(item => item.year).filter(Boolean))];
+      const colors = [...new Set(items.map(item => item.color?.toLowerCase()).filter(Boolean))];
+      const interiorColors = [...new Set(items.map(item => item.interiorColor?.toLowerCase()).filter(Boolean))];
+      const conditions = [...new Set(items.map(item => item.condition?.toLowerCase()).filter(Boolean))];
+      const statuses = [...new Set(items.map(item => item.status?.toLowerCase()).filter(Boolean))];
+      const warehouses = [...new Set(items.map(item => item.location?.warehouse?.toLowerCase()).filter(Boolean))];
+      
+      // Flatten and process tags
+      const allTags = [...new Set(
+        items.flatMap(item => 
+          (item.tags || []).map(tag => tag?.toLowerCase()).filter(Boolean)
+        )
+      )];
+
+      return {
+        types,
+        categories,
+        subcategories,
+        brands,
+        models,
+        years,
+        colors,
+        interiorColors,
+        conditions,
+        statuses,
+        warehouses,
+        allTags
       };
     } catch (error) {
       throw error;

@@ -339,5 +339,10 @@ quotationSchema.virtual('remainingAmount').get(function() {
 quotationSchema.index({ quotationId: 1 });
 quotationSchema.index({ quotationNumber: 1 });
 quotationSchema.index({ status: 1, createdAt: -1 });
+quotationSchema.index({ status: 1, createdAt: -1, currency: 1 });
+quotationSchema.index({ 'customer.custId': 1, status: 1 });
+quotationSchema.index({ createdBy: 1, createdAt: -1 });
+quotationSchema.index({ currency: 1, status: 1, totalAmount: -1 });
+quotationSchema.index({ validTill: 1, status: 1 });
 
 module.exports = mongoose.model('Quotation', quotationSchema);

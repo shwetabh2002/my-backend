@@ -72,7 +72,7 @@ app.use('*', (req, res) => {
 // app.use(errorHandler);
 
 // Start server
-app.listen(PORT, () => {
+app.listen(PORT,'0.0.0.0', () => {
   console.log(`Server running on port ${PORT}`);
   console.log(`Environment: ${process.env.NODE_ENV}`);
 });
