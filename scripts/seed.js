@@ -203,35 +203,48 @@ const seedAdminUser = async (adminRole, employeeRole, financeRole) => {
       address: '123 Main St, Anytown, USA',
       phone: '+1-555-0000'
     });
-    const salesUser = new User({
-      name: 'Sales User',
-      countryCode: '+1',
-      email: 'sales@example.com',
-      password: 'sales123',
-      type: 'employee',
-      status: 'active',
-      roleIds: [employeeRole._id],
-      address: '123 Main St, Anytown, USA',
-      phone: '+1-555-0000'
-    });
-    const financeUser = new User({
-      name: 'Finance User',
-      countryCode: '+1',
-      email: 'finance@example.com',
-      password: 'finance123',
-      type: 'employee',
-      status: 'active',
-      roleIds: [financeRole._id],
-      address: '123 Main St, Anytown, USA',
-      phone: '+1-555-0000'
-    });
-    await salesUser.save();
-    await financeUser.save();
+    // Check if sales user already exists
+    const existingSales = await User.findOne({ email: 'sales@example.com' });
+    if (!existingSales) {
+      const salesUser = new User({
+        name: 'Sales User',
+        countryCode: '+1',
+        email: 'sales@example.com',
+        password: 'sales123',
+        type: 'employee',
+        status: 'active',
+        roleIds: [employeeRole._id],
+        address: '123 Main St, Anytown, USA',
+        phone: '+1-555-0000'
+      });
+      await salesUser.save();
+      console.log('Sales user created successfully');
+    } else {
+      console.log('Sales user already exists, skipping sales creation');
+    }
+
+    // Check if finance user already exists
+    const existingFinance = await User.findOne({ email: 'finance@example.com' });
+    if (!existingFinance) {
+      const financeUser = new User({
+        name: 'Finance User',
+        countryCode: '+1',
+        email: 'finance@example.com',
+        password: 'finance123',
+        type: 'employee',
+        status: 'active',
+        roleIds: [financeRole._id],
+        address: '123 Main St, Anytown, USA',
+        phone: '+1-555-0000'
+      });
+      await financeUser.save();
+      console.log('Finance user created successfully');
+    } else {
+      console.log('Finance user already exists, skipping finance creation');
+    }
 
     await adminUser.save();
     console.log('Admin user created successfully');
-    console.log('Sales user created successfully');
-    console.log('Finance user created successfully');
     
     return adminUser;
   } catch (error) {
@@ -242,31 +255,30 @@ const seedAdminUser = async (adminRole, employeeRole, financeRole) => {
 
 const seedSampleUsers = async (employeeRole, financeRole, customerRole, supplierRole) => {
   try {
-    // Check if sample users already exist
-    const existingUsers = await User.countDocuments({ email: { $regex: /sample/ } });
-    if (existingUsers > 0) {
-      console.log('Sample users already exist, skipping sample user creation');
-      return;
+    // Check if supplier user already exists
+    const existingSupplier = await User.findOne({ email: 'test.supplier@example.com' });
+    if (existingSupplier) {
+      console.log('Test supplier already exists, skipping supplier creation');
+      return [existingSupplier];
     }
 
-    const sampleUsers = [
-      {
-        name: 'Test Supplier',
-        countryCode: '+971',
-        email: 'test.supplier@example.com',
-        phone: '+971-50-1234567',
-        custId: 'SUP-001',
-        type: 'supplier',
-        status: 'active',
-        roleIds: [supplierRole._id],
-        address: 'Dubai Industrial City, UAE'
-      }
-    ];
+    // Create supplier user individually to ensure pre-save middleware runs
+    const supplierUser = new User({
+      name: 'Test Supplier',
+      countryCode: '+971',
+      email: 'test.supplier@example.com',
+      phone: '+971-50-1234567',
+      custId: 'SUP-001',
+      type: 'supplier',
+      status: 'active',
+      roleIds: [supplierRole._id],
+      address: 'Dubai Industrial City, UAE'
+    });
 
-    const createdUsers = await User.insertMany(sampleUsers);
-    console.log('Sample users created successfully:', createdUsers.map(u => u.name));
+    await supplierUser.save();
+    console.log('Test supplier created successfully');
     
-    return createdUsers;
+    return [supplierUser];
   } catch (error) {
     console.error('Error creating sample users:', error);
     throw error;
