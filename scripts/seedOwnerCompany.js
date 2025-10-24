@@ -71,9 +71,9 @@ const seedOwnerCompany = async () => {
       },
       contacts: [
         {
-          name: 'AL KARAMA MOTORS FZE',
-          email: 'info@alkaramamotors.com',
-          phone: '+971 43337699',
+          name: 'PLANET SKY NEW AUTOMOBILE TRADING LLC',
+          email: 'info@planet-sky.com',
+          phone: '+971(4) 326 9576',
           position: 'Business Entity',
           isPrimary: true
         }
