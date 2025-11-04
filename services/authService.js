@@ -2,6 +2,7 @@ const User = require('../models/User');
 const Role = require('../models/Role');
 const { generateTokenPair } = require('../utils/jwt');
 const { createError } = require('../utils/apiError');
+const crypto = require('crypto');
 
 
 
@@ -212,6 +213,110 @@ class AuthService {
       await user.save();
 
       return { message: 'Password changed successfully' };
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  // Forgot password - Generate reset token
+  async forgotPassword(email) {
+    try {
+      const user = await User.findOne({ email }).select('+resetPasswordToken +resetPasswordExpires');
+      
+      if (!user) {
+        // Don't reveal if user exists or not for security
+        return { message: 'If the email exists, a password reset link has been sent' };
+      }
+
+      // Check if user type allows password reset
+      if (user.type === 'customer' || user.type === 'supplier') {
+        throw createError.forbidden('Password reset is not available for this user type');
+      }
+
+      // Generate reset token
+      const resetToken = crypto.randomBytes(32).toString('hex');
+      const resetTokenHash = crypto.createHash('sha256').update(resetToken).digest('hex');
+      
+      // Set token expiration (1 hour from now)
+      const resetTokenExpires = new Date(Date.now() + 60 * 60 * 1000);
+
+      // Save token to user
+      user.resetPasswordToken = resetTokenHash;
+      user.resetPasswordExpires = resetTokenExpires;
+      await user.save({ validateBeforeSave: false });
+
+      // In production, you would send this token via email
+      // For now, return the token (remove this in production)
+      return {
+        message: 'Password reset token generated successfully',
+        resetToken: resetToken, // Remove this in production - send via email instead
+        expiresAt: resetTokenExpires,
+        note: 'In production, this token would be sent via email'
+      };
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  // Reset password with token
+  async resetPassword(token, newPassword) {
+    try {
+      // Hash the token to compare with stored hash
+      const resetTokenHash = crypto.createHash('sha256').update(token).digest('hex');
+
+      // Find user with valid reset token
+      const user = await User.findOne({
+        resetPasswordToken: resetTokenHash,
+        resetPasswordExpires: { $gt: Date.now() }
+      }).select('+resetPasswordToken +resetPasswordExpires');
+
+      if (!user) {
+        throw createError.badRequest('Invalid or expired reset token');
+      }
+
+      // Update password
+      user.password = newPassword;
+      user.resetPasswordToken = undefined;
+      user.resetPasswordExpires = undefined;
+      await user.save();
+
+      return { message: 'Password reset successfully' };
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  // Admin reset password (admin can reset any user's password)
+  async adminResetPassword(adminUserId, targetUserId, newPassword) {
+    try {
+      // Verify admin exists and is active
+      const admin = await User.findById(adminUserId);
+      if (!admin || admin.type !== 'admin' || admin.status !== 'active') {
+        throw createError.forbidden('Only active admins can reset passwords');
+      }
+
+      // Find target user
+      const targetUser = await User.findById(targetUserId);
+      if (!targetUser) {
+        throw createError.notFound('User not found');
+      }
+
+      // Check if user type allows password reset
+      if (targetUser.type === 'customer' || targetUser.type === 'supplier') {
+        throw createError.forbidden('Password reset is not available for this user type');
+      }
+
+      // Update password
+      targetUser.password = newPassword;
+      targetUser.resetPasswordToken = undefined;
+      targetUser.resetPasswordExpires = undefined;
+      await targetUser.save();
+
+      return {
+        message: 'Password reset successfully by admin',
+        userId: targetUser._id,
+        email: targetUser.email
+      };
     } catch (error) {
       throw error;
     }

@@ -40,6 +40,45 @@ const schemas = {
     })
   }),
 
+  forgotPassword: Joi.object({
+    email: Joi.string().email().required().messages({
+      'string.email': 'Please provide a valid email address',
+      'any.required': 'Email is required'
+    })
+  }),
+
+  resetPassword: Joi.object({
+    token: Joi.string().required().messages({
+      'any.required': 'Reset token is required'
+    }),
+    newPassword: Joi.string().min(6).required().messages({
+      'string.min': 'Password must be at least 6 characters long',
+      'any.required': 'New password is required'
+    })
+  }),
+
+  adminResetPassword: Joi.object({
+    userId: Joi.string().hex().length(24).required().messages({
+      'string.hex': 'User ID must be a valid ObjectId',
+      'string.length': 'User ID must be 24 characters long',
+      'any.required': 'User ID is required'
+    }),
+    newPassword: Joi.string().min(6).required().messages({
+      'string.min': 'Password must be at least 6 characters long',
+      'any.required': 'New password is required'
+    })
+  }),
+
+  changePassword: Joi.object({
+    currentPassword: Joi.string().required().messages({
+      'any.required': 'Current password is required'
+    }),
+    newPassword: Joi.string().min(6).required().messages({
+      'string.min': 'New password must be at least 6 characters long',
+      'any.required': 'New password is required'
+    })
+  }),
+
   // User schemas
   createUser: Joi.object({
     name: Joi.string().min(2).max(100).required().messages({

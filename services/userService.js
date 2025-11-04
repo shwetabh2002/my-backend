@@ -896,10 +896,10 @@ class UserService {
         throw createError.notFound('Employee not found');
       }
 
-      // Check if user is an employee
-      if (employee.type !== 'employee') {
-        throw createError.badRequest('User is not an employee');
-      }
+      // // Check if user is an employee
+      // if (employee.type !== 'employee') {
+      //   throw createError.badRequest('User is not an employee');
+      // }
 
       // Remove password and refresh token from response
       const { password, refreshToken, ...employeeWithoutPassword } = employee;

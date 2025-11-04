@@ -235,6 +235,103 @@ class AuthController {
       });
     }
   };
+
+  // Forgot password - Request password reset
+  forgotPassword = async (req, res) => {
+    try {
+      const { email } = req.body;
+
+      const result = await authService.forgotPassword(email);
+
+      res.status(200).json({
+        success: true,
+        message: result.message,
+        data: result
+      });
+    } catch (error) {
+      // Handle custom API errors with status codes
+      if (error.statusCode) {
+        return res.status(error.statusCode).json({
+          success: false,
+          message: error.message,
+          statusCode: error.statusCode
+        });
+      }
+      
+      // Handle unexpected errors
+      console.error('Forgot password error:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Internal server error',
+        statusCode: 500
+      });
+    }
+  };
+
+  // Reset password with token
+  resetPassword = async (req, res) => {
+    try {
+      const { token, newPassword } = req.body;
+
+      const result = await authService.resetPassword(token, newPassword);
+
+      res.status(200).json({
+        success: true,
+        message: result.message,
+        data: result
+      });
+    } catch (error) {
+      // Handle custom API errors with status codes
+      if (error.statusCode) {
+        return res.status(error.statusCode).json({
+          success: false,
+          message: error.message,
+          statusCode: error.statusCode
+        });
+      }
+      
+      // Handle unexpected errors
+      console.error('Reset password error:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Internal server error',
+        statusCode: 500
+      });
+    }
+  };
+
+  // Admin reset password
+  adminResetPassword = async (req, res) => {
+    try {
+      const adminUserId = req.user._id;
+      const { userId, newPassword } = req.body;
+
+      const result = await authService.adminResetPassword(adminUserId, userId, newPassword);
+
+      res.status(200).json({
+        success: true,
+        message: result.message,
+        data: result
+      });
+    } catch (error) {
+      // Handle custom API errors with status codes
+      if (error.statusCode) {
+        return res.status(error.statusCode).json({
+          success: false,
+          message: error.message,
+          statusCode: error.statusCode
+        });
+      }
+      
+      // Handle unexpected errors
+      console.error('Admin reset password error:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Internal server error',
+        statusCode: 500
+      });
+    }
+  };
 }
 
 module.exports = new AuthController();
