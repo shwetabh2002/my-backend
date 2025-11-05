@@ -504,7 +504,7 @@ class InventoryService {
     }
   }
 
-  async getInventorycategory(filters, currencyType = 'USD', options = {}) {
+  async getInventorycategory(filters, currencyType = 'AED', options = {}) {
     try {
       
       // Pagination options
@@ -539,7 +539,7 @@ class InventoryService {
       
       // Get exchange rate once for all items
       let exchangeRate = 1.0;
-      if (currencyType && currencyType.toUpperCase() !== 'USD') {
+      if (currencyType && currencyType.toUpperCase() !== 'AED') {
         try {
           exchangeRate = await currencyService.getExchangeRate(currencyType);
         } catch (error) {

@@ -26,7 +26,7 @@ class CurrencyService {
       const response = await axios.get(this.baseUrl, {
         params: {
           app_id: this.appId,
-          base: 'USD',
+          base: 'AED',
           symbols: currencyType.toUpperCase()
         },
         timeout: 10000 // 10 seconds timeout
@@ -69,11 +69,11 @@ class CurrencyService {
    */
   async convertPrice(usdPrice, currencyType) {
     try {
-      if (!currencyType || currencyType.toUpperCase() === 'USD') {
+      if (!currencyType || currencyType.toUpperCase() === 'AED') {
         return {
           originalPrice: usdPrice,
           convertedPrice: usdPrice,
-          currency: 'USD',
+          currency: 'AED',
           exchangeRate: 1.0
         };
       }
@@ -94,9 +94,9 @@ class CurrencyService {
       return {
         originalPrice: usdPrice,
         convertedPrice: usdPrice,
-        currency: 'USD',
+        currency: 'AED',
         exchangeRate: 1.0,
-        error: 'Currency conversion failed, showing USD price'
+        error: 'Currency conversion failed, showing AED price'
       };
     }
   }
@@ -109,12 +109,12 @@ class CurrencyService {
    */
   async convertPrices(items, currencyType) {
     try {
-      if (!currencyType || currencyType.toUpperCase() === 'USD') {
+      if (!currencyType || currencyType.toUpperCase() === 'AED') {
         return items.map(item => ({
           ...item,
           pricing: {
             ...item.pricing,
-            currency: 'USD'
+            currency: 'AED'
           }
         }));
       }
@@ -155,8 +155,8 @@ class CurrencyService {
         ...item,
         pricing: {
           ...item.pricing,
-          currency: 'USD',
-          error: 'Currency conversion failed, showing USD prices'
+          currency: 'AED',
+          error: 'Currency conversion failed, showing AED prices'
         }
       }));
     }
