@@ -53,16 +53,27 @@ class InventoryService {
   async generateSKU(inventoryData) {
     const { type, brand, model, year } = inventoryData;
     
+    // Sanitize function: remove/replace invalid characters
+    // Only allow uppercase letters, numbers, and hyphens
+    const sanitize = (str) => {
+      if (!str) return '';
+      return str
+        .toUpperCase()
+        .replace(/[^A-Z0-9-]/g, '-') // Replace invalid chars with hyphens
+        .replace(/-+/g, '-') // Replace multiple hyphens with single hyphen
+        .replace(/^-|-$/g, ''); // Remove leading/trailing hyphens
+    };
+    
     // Create base SKU
     let baseSKU = '';
     
     if (type === 'car') {
-      baseSKU = `CAR-${brand.toUpperCase()}`;
-      if (model) baseSKU += `-${model.toUpperCase()}`;
+      baseSKU = `CAR-${sanitize(brand)}`;
+      if (model) baseSKU += `-${sanitize(model)}`;
       if (year) baseSKU += `-${year}`;
     } else {
-      baseSKU = `PART-${brand.toUpperCase()}`;
-      if (model) baseSKU += `-${model.toUpperCase()}`;
+      baseSKU = `PART-${sanitize(brand)}`;
+      if (model) baseSKU += `-${sanitize(model)}`;
       if (year) baseSKU += `-${year}`;
     }
     
