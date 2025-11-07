@@ -193,19 +193,20 @@ const customerInvoiceSchema = new mongoose.Schema({
     default: 0,
     min: 0
   },
-  additionalExpenses: {
+  // Additional Expenses (Array of expense objects)
+  additionalExpenses: [{
     description: String,
     amount: {
       type: Number,
       default: 0,
       min: 0
-    },   
-     expenceType:{
-      type: String,
-      enum: ['shipping', 'accessories', 'Rta Fees',"COO Fees","Customs","Insurance","Other","none"],
-      required: false
     },
-  },
+    expenceType: {
+      type: String,
+      enum: ['shipping', 'accessories', 'Rta Fees', "COO Fees", "Customs", "Insurance", "Other", "none"],
+      required: false
+    }
+  }],
   moreExpense:{
     description: {
       type: String,

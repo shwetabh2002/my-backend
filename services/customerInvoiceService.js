@@ -15,7 +15,7 @@ class CustomerInvoiceService {
    * @param {Object} options - Query options (page, limit, sort, etc.)
    * @returns {Promise<Object>} Paginated invoices
    */
-  async getAllInvoices(filters = {}, options = {}) {
+  async getAllInvoices(filters = {}, options = {}, currentUser, isAdmin) {
     try {
       const {
         page = 1,
@@ -35,9 +35,16 @@ class CustomerInvoiceService {
       // Build query
       const query = {};
 
+      // If user is not admin, filter by createdBy
+      if (!isAdmin && currentUser && currentUser._id) {
+        query.createdBy = currentUser._id;
+      } else if (createdBy) {
+        // Admin can filter by specific createdBy if provided
+        query.createdBy = createdBy;
+      }
+
       if (status) query.status = status;
       if (customerId) query['customer.custId'] = customerId;
-      if (createdBy) query.createdBy = createdBy;
       if (currency) query.currency = currency;
 
       // Date range filters
@@ -211,6 +218,22 @@ class CustomerInvoiceService {
         throw createError.badRequest('Only approved quotations can be converted to invoices');
       }
 
+      // Process additionalExpenses - ensure it's an array
+      let additionalExpenses = [];
+      if (quotation.additionalExpenses) {
+        if (Array.isArray(quotation.additionalExpenses)) {
+          additionalExpenses = quotation.additionalExpenses;
+        } else {
+          // Handle legacy object format - convert to array
+          additionalExpenses = [{
+            expenceType: quotation.additionalExpenses.expenceType || 'Other',
+            description: quotation.additionalExpenses.description || '',
+            amount: quotation.additionalExpenses.amount || 0,
+            currency: quotation.additionalExpenses.currency || quotation.currency || 'AED'
+          }];
+        }
+      }
+
       // Build invoice payload from quotation data
       const invoicePayload = {
         // From quotation
@@ -221,7 +244,7 @@ class CustomerInvoiceService {
         subtotal: quotation.subtotal,
         discount: quotation.totalDiscount,
         discountType: quotation.discountType,
-        additionalExpenses: quotation.additionalExpenses,
+        additionalExpenses: additionalExpenses,
         VAT: quotation.VAT,
         vatAmount: quotation.vatAmount,
         totalAmount: quotation.totalAmount,
@@ -539,8 +562,10 @@ class CustomerInvoiceService {
       const itemSellingAmount = invoice.items.reduce((sum, item) => 
         sum + (item.totalPrice || 0), 0);
 
-      // Calculate additional expenses
-      const additionalExpenseAmount = invoice.additionalExpenses?.amount || 0;
+      // Calculate additional expenses (sum of all expenses in array)
+      const additionalExpenseAmount = invoice.additionalExpenses && Array.isArray(invoice.additionalExpenses)
+        ? invoice.additionalExpenses.reduce((sum, expense) => sum + (expense.amount || 0), 0)
+        : (invoice.additionalExpenses?.amount || 0); // Fallback for legacy object format
       const moreExpenseAmount = invoice.moreExpense?.amount || 0;
       const totalDiscount = invoice.totalDiscount || 0;
       const vatAmount = invoice.vatAmount || 0;

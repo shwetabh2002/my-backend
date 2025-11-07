@@ -136,8 +136,9 @@ class UserController {
 
   createCustomer = asyncHandler(async (req, res) => {
     const userData = req.body;
+    const currentUser = req.user;
 
-    const user = await userService.createCustomer(userData);
+    const user = await userService.createCustomer(userData, currentUser);
 
     res.status(201).json({
       success: true,
@@ -183,15 +184,16 @@ class UserController {
   getCustomers = async (req, res) => {
     try {
       const { page = 1, limit = 10, search, status } = req.query;
-      
+      const currentUser = req.user;
       const options = {
         page: parseInt(page),
         limit: parseInt(limit),
         search,
-        status
+        status,
+        currentUser,
       };
-      
-      const result = await userService.getCustomers(options);
+      const isAdmin = currentUser?.type === 'admin';
+      const result = await userService.getCustomers(options,currentUser,isAdmin);
       
       res.status(200).json({
         success: true,

@@ -261,7 +261,7 @@ class UserService {
   }
 
   // Create customer
-  async createCustomer(userData) {
+  async createCustomer(userData, currentUser) {
     try {
       // Check if email already exists
       const existingCustomer = await User.findOne({ $or: [{ email: userData.email }, { phone: userData.phone }] });
@@ -273,7 +273,8 @@ class UserService {
       const customerData = {
         ...userData,
         type: 'customer',
-        status: 'active'
+        status: 'active',
+        createdBy: currentUser?._id || null
       };
 
       // Ensure no password is set for customers
@@ -312,12 +313,16 @@ class UserService {
       throw error;
     }
   }
-  async getCustomers(options = {}) {
+  async getCustomers(options = {},currentUser,isAdmin) {
     try {
       const { page = 1, limit = 10, search, status } = options;
-      
       // Build query
       const query = { type: 'customer' };
+      
+      // If user is not admin, filter by createdBy
+      if (!isAdmin && currentUser && currentUser._id) {
+        query.createdBy = currentUser._id;
+      }
       
       // Add status filter if provided
       if (status) {

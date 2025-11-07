@@ -42,6 +42,8 @@ const createQuotation = async (req, res) => {
 const getQuotations = async (req, res) => {
   try {
     const filters = req.query;
+    const currentUser = req.user;
+    const isAdmin = currentUser?.type === 'admin';
     const options = {
       page: req.query.page || 1,
       limit: req.query.limit || 10,
@@ -57,7 +59,7 @@ const getQuotations = async (req, res) => {
       validTillTo: req.query.validTillTo
     };
 
-    const result = await quotationService.getQuotations(filters, options);
+    const result = await quotationService.getQuotations(filters, options, currentUser, isAdmin);
 
     res.status(200).json({
       success: true,

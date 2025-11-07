@@ -273,9 +273,17 @@ class CurrencyService {
         });
       }
 
-      // Convert additional expenses amount
-      if (convertedPayload.additionalExpenses && convertedPayload.additionalExpenses.amount) {
-        convertedPayload.additionalExpenses.amount = Math.round(convertedPayload.additionalExpenses.amount * exchangeRate * 100) / 100;
+      // Convert additional expenses amounts (handle array format)
+      if (convertedPayload.additionalExpenses) {
+        if (Array.isArray(convertedPayload.additionalExpenses)) {
+          convertedPayload.additionalExpenses = convertedPayload.additionalExpenses.map(expense => ({
+            ...expense,
+            amount: Math.round((expense.amount || 0) * exchangeRate * 100) / 100
+          }));
+        } else if (convertedPayload.additionalExpenses.amount) {
+          // Handle legacy object format
+          convertedPayload.additionalExpenses.amount = Math.round(convertedPayload.additionalExpenses.amount * exchangeRate * 100) / 100;
+        }
       }
 
       // Convert discount amount (if it's a fixed amount)

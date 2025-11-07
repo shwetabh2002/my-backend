@@ -98,6 +98,11 @@ const userSchema = new mongoose.Schema({
     type: Date,
     select: false
   },
+  createdBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    required: false
+  }
 }, {
   timestamps: true,
   toJSON: { virtuals: true },
@@ -111,6 +116,8 @@ userSchema.index({ custId: 1 });
 userSchema.index({ type: 1 });
 userSchema.index({ status: 1 });
 userSchema.index({ roleIds: 1 });
+userSchema.index({ createdBy: 1 });
+userSchema.index({ type: 1, createdBy: 1 }); // Compound index for customer queries
 
 // Virtual for roles (populated)
 userSchema.virtual('roles', {

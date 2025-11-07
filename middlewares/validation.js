@@ -993,20 +993,22 @@ const schemas = {
     paymentTerms: Joi.string().max(200).optional().messages({
       'string.max': 'Payment terms cannot exceed 200 characters'
     }),
-    additionalExpenses: Joi.object({
-      expenceType: Joi.string().valid('shipping', 'accessories', 'Rta Fees', 'COO Fees', 'Customs', 'Insurance', 'Other', 'none').required().messages({
-        'any.only': 'Expense type must be one of: shipping, accessories, Rta Fees, COO Fees, Customs, Insurance, Other, none',
-        'any.required': 'Expense type is required'
-      }),
-      description: Joi.string().trim().max(500).messages({
-        'string.max': 'Description cannot exceed 500 characters',
-        'any.required': 'Description is required'
-      }),
-      amount: Joi.number().min(0).messages({
-        'number.min': 'Amount cannot be negative',
-        'any.required': 'Amount is required'
+    additionalExpenses: Joi.array().items(
+      Joi.object({
+        expenceType: Joi.string().valid('shipping', 'accessories', 'Rta Fees', 'COO Fees', 'Customs', 'Insurance', 'Other', 'none').required().messages({
+          'any.only': 'Expense type must be one of: shipping, accessories, Rta Fees, COO Fees, Customs, Insurance, Other, none',
+          'any.required': 'Expense type is required'
+        }),
+        description: Joi.string().trim().max(500).messages({
+          'string.max': 'Description cannot exceed 500 characters'
+        }),
+        amount: Joi.number().min(0).required().messages({
+          'number.min': 'Amount cannot be negative',
+          'any.required': 'Amount is required'
+        }),
+        currency: Joi.string().max(3).optional()
       })
-    }).optional(),
+    ).optional(),
     exportTo: Joi.string().max(200).optional().messages({
       'string.max': 'Export destination cannot exceed 200 characters'
     }),
@@ -1171,17 +1173,20 @@ const schemas = {
     paymentTerms: Joi.string().valid('Due on Receipt', 'Net 15', 'Net 30', 'Net 45', 'Net 60', 'Prepaid', 'Other').messages({
       'any.only': 'Payment terms must be one of: Due on Receipt, Net 15, Net 30, Net 45, Net 60, Prepaid, Other'
     }),
-    additionalExpenses: Joi.object({
-      expenceType: Joi.string().valid('shipping', 'accessories', 'Rta Fees', 'COO Fees', 'Customs', 'Insurance', 'Other', 'none').messages({
-        'any.only': 'Expense type must be one of: shipping, accessories, Rta Fees, COO Fees, Customs, Insurance, Other, none'
-      }),
-      description: Joi.string().trim().max(500).messages({
-        'string.max': 'Description cannot exceed 500 characters'
-      }),
-      amount: Joi.number().min(0).messages({
-        'number.min': 'Amount cannot be negative'
+    additionalExpenses: Joi.array().items(
+      Joi.object({
+        expenceType: Joi.string().valid('shipping', 'accessories', 'Rta Fees', 'COO Fees', 'Customs', 'Insurance', 'Other', 'none').messages({
+          'any.only': 'Expense type must be one of: shipping, accessories, Rta Fees, COO Fees, Customs, Insurance, Other, none'
+        }),
+        description: Joi.string().trim().max(500).messages({
+          'string.max': 'Description cannot exceed 500 characters'
+        }),
+        amount: Joi.number().min(0).messages({
+          'number.min': 'Amount cannot be negative'
+        }),
+        currency: Joi.string().max(3).optional()
       })
-    }).optional(),
+    ).optional(),
     bookingAmount: Joi.number().min(0).optional().messages({
       'number.min': 'Booking amount cannot be negative'
     })

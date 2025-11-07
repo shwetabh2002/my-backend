@@ -70,7 +70,7 @@ class QuotationService {
         trn: customer.trn || null
       };
 quotationData.deliveryAddress = customer.address 
-      // Calculate line totals for each item
+      // Calculate line totals for each item (initial calculation)
       if (quotationData.items && quotationData.items.length > 0) {
         // console.log('Processing items:', quotationData.items.length);
         quotationData.items = quotationData.items.map(item => {
@@ -84,40 +84,82 @@ quotationData.deliveryAddress = customer.address
       const totalVinNumbers = quotationData.items.map(item => item.vinNumbers.map(vin => vin.chasisNumber)).flat();
       // console.log('Vin numbers:', totalVinNumbers);
 
-      // Calculate subtotal
+      // Calculate initial subtotal (before discount adjustment)
+      const initialSubtotal = quotationData.items.reduce((total, item) => total + item.totalPrice, 0);
+      
+      // Calculate discount amount
+      const discountValue = quotationData.discount || 0;
+      let discountAmount = 0;
+      if (discountValue > 0) {
+        if (quotationData.discountType === 'percentage') {
+          discountAmount = (initialSubtotal * discountValue) / 100;
+        } else {
+          discountAmount = discountValue;
+        }
+      }
+      
+      // Get total count of all VIN numbers across all items
+      const totalVinNumbersCount = quotationData.items.reduce((total, item) => {
+        return total + (item.vinNumbers?.length || 0);
+      }, 0);
+      
+      // Calculate discount per VIN number
+      const discountPerVin = totalVinNumbersCount > 0 ? (discountAmount / totalVinNumbersCount) : 0;
+      
+      // Apply discount to selling prices and recalculate totals
+      if (quotationData.items && quotationData.items.length > 0 && discountAmount > 0) {
+        quotationData.items = quotationData.items.map(item => {
+          // Get number of VIN numbers for this item
+          const itemVinCount = item.vinNumbers?.length || 0;
+          
+          // Calculate discount amount for this item (discount per VIN * number of VINs)
+          const itemDiscount = discountPerVin * itemVinCount;
+          
+          // Adjust selling price by subtracting the discount
+          const adjustedSellingPrice = Math.max(0, item.sellingPrice - itemDiscount); // Ensure price doesn't go negative
+          
+          // Calculate total price with adjusted selling price
+          const totalPrice = item.quantity * adjustedSellingPrice;
+          
+          return {
+            ...item,
+            sellingPrice: adjustedSellingPrice,
+            totalPrice: totalPrice
+          };
+        });
+      }
+      
+      // Calculate final subtotal (after discount adjustment)
       quotationData.subtotal = quotationData.items.reduce((total, item) => total + item.totalPrice, 0);
 
       // Set currency for additional expenses from root level currency
-      if (quotationData?.additionalExpenses) {
-        quotationData.additionalExpenses.currency = quotationData.currency || 'AED';
-        // Ensure amount is set to 0 if not provided
-        if (!quotationData.additionalExpenses.amount) {
-          quotationData.additionalExpenses.amount = 0;
-        }
+      if (quotationData?.additionalExpenses && Array.isArray(quotationData.additionalExpenses)) {
+        quotationData.additionalExpenses = quotationData.additionalExpenses.map(expense => ({
+          ...expense,
+          currency: expense.currency || quotationData.currency || 'AED',
+          amount: expense.amount || 0
+        }));
+      } else if (quotationData?.additionalExpenses && !Array.isArray(quotationData.additionalExpenses)) {
+        // Handle legacy object format - convert to array
+        quotationData.additionalExpenses = [{
+          ...quotationData.additionalExpenses,
+          currency: quotationData.additionalExpenses.currency || quotationData.currency || 'AED',
+          amount: quotationData.additionalExpenses.amount || 0
+        }];
       }
 
-      // Calculate additional expenses amount
-      const additionalExpensesAmount = quotationData.additionalExpenses ? (quotationData.additionalExpenses.amount || 0) : 0;
+      // Calculate additional expenses amount (sum of all expenses)
+      const additionalExpensesAmount = quotationData.additionalExpenses && Array.isArray(quotationData.additionalExpenses)
+        ? quotationData.additionalExpenses.reduce((sum, expense) => sum + (expense.amount || 0), 0)
+        : 0;
 
-      // Map discount to totalDiscount and calculate
-      const discountValue = quotationData.discount || 0;
-      if (discountValue > 0) {
-        if (quotationData.discountType === 'percentage') {
-          // console.log('Calculating total discount:', discountValue, quotationData.discountType);
-          quotationData.totalDiscount = (quotationData.subtotal * discountValue) / 100;
-          // console.log('Calculated total discount:', quotationData.totalDiscount);
-        } else {
-          // console.log('Calculating total discount:', discountValue, quotationData.discountType);
-          quotationData.totalDiscount = discountValue;
-          // console.log('Calculated total discount:', quotationData.totalDiscount);
-        }
-      } else {
-        quotationData.totalDiscount = 0;
-      }
+      // Set totalDiscount (already calculated and applied to selling prices above)
+      // The discount has been distributed across VIN numbers and applied to item prices
+      quotationData.totalDiscount = discountAmount;
       const vat = await Company.findOne({});
       quotationData.VAT = vat.VAT;
       // Calculate vat amount (on subtotal + additional expenses - discount)
-      const taxableAmount = quotationData.subtotal + additionalExpensesAmount - quotationData.totalDiscount;
+      const taxableAmount = quotationData.subtotal + additionalExpensesAmount;
       // console.log('Calculated taxable amount:', taxableAmount);
       quotationData.vatAmount = quotationData.VAT ? (taxableAmount * quotationData.VAT) / 100 : 0;
       // console.log('Calculated vat amount:', quotationData.vatAmount);
@@ -147,6 +189,7 @@ quotationData.deliveryAddress = customer.address
 
       const quotation = new Quotation({
         ...quotationModelData,
+        exportTo: quotationData?.exportTo?.toLowerCase(),
         status: finalStatus, // Override status
         statusHistory: statusHistory, // Add status history
         createdBy,
@@ -156,7 +199,7 @@ quotationData.deliveryAddress = customer.address
       });
       
       
-      await this.updateInventoryForQuotation(quotationData.items,'hold');
+      // await this.updateInventoryForQuotation(quotationData.items,'hold');
 
       await quotation.save();
       console.log('Quotation saved successfully:', quotation.quotationId);
@@ -173,6 +216,10 @@ quotationData.deliveryAddress = customer.address
             // If quotation status is 'booked', automatically create a receipt
             if (finalStatus === 'booked') {
               try {
+                console.log('Updating inventory for booked quotation:', quotation.quotationNumber);
+
+                await this.updateInventoryForQuotation(quotationData.items,'hold');
+
                 console.log('Creating automatic receipt for booked quotation:', quotation.quotationNumber);
                 
                 const receiptData = {
@@ -261,7 +308,7 @@ quotationData.deliveryAddress = customer.address
    * @param {Object} options - Query options (page, limit, sort, etc.)
    * @returns {Promise<Object>} Paginated quotations
    */
-  async getQuotations(filters , options ) {
+  async getQuotations(filters , options, currentUser, isAdmin ) {
     try {
       const {
         page = 1,
@@ -281,9 +328,16 @@ quotationData.deliveryAddress = customer.address
       // Build query
       const query = {};
 
+      // If user is not admin, filter by createdBy
+      if (!isAdmin && currentUser && currentUser._id) {
+        query.createdBy = currentUser._id;
+      } else if (createdBy) {
+        // Admin can filter by specific createdBy if provided
+        query.createdBy = createdBy;
+      }
+
       if (status) query.status = status;
       if (customerId) query['customer.custId'] = customerId;
-      if (createdBy) query.createdBy = createdBy;
       if (currency) query.currency = currency;
 
       // Date range filters
@@ -878,7 +932,7 @@ quotationData.deliveryAddress = customer.address
       const quotation = await Quotation.findById(quotationId)
         .populate('createdBy', 'name email')
         .populate('updatedBy', 'name email')
-        .populate('customer.userId', 'name email trn')
+        .populate('customer.userId', 'name email trn countryCode')
         .populate('items.supplierId', 'name email custId')
 
       if (!quotation) {
@@ -957,12 +1011,13 @@ quotationData.deliveryAddress = customer.address
       }
 
       // Only allow deletion of rejected quotations
-      if (quotation.status !== 'rejected') {
+      if (quotation.status !== 'rejected' && quotation.status !== 'draft') {
         throw createError.badRequest(`Cannot delete quotation with status '${quotation.status}'. Only rejected quotations can be deleted.`);
       }
 
       // Delete the quotation
       await Quotation.findByIdAndDelete(quotationId);
+      await this.restoreInventoryForQuotation(quotation.items);
 
       return {
         message: 'Quotation deleted successfully',
@@ -1312,7 +1367,7 @@ quotationData.deliveryAddress = customer.address
       await quotation.save();
 
       // Restore inventory when rejecting
-      await this.restoreInventoryForQuotation(quotation.items);
+      // await this.restoreInventoryForQuotation(quotation.items);
 
       return quotation;
     } catch (error) {
@@ -1639,7 +1694,7 @@ quotationData.deliveryAddress = customer.address
       }
 
       // Check if quotation is accepted or in review
-      if (quotation.status !== 'accepted' && quotation.status !== 'review') {
+      if (quotation.status !== 'accepted' && quotation.status !== 'review' && quotation.status !== 'booked') {
         throw createError.badRequest('Only accepted or review quotations can be updated');
       }
 
@@ -1665,12 +1720,15 @@ quotationData.deliveryAddress = customer.address
         // Start with current subtotal
         let subtotal = currentQuotation.subtotal;
         
-        // Add additional expenses amount
+        // Add additional expenses amount (sum of all expenses in array)
         let additionalExpenseAmount = 0;
-        if (updateData.additionalExpenses && updateData.additionalExpenses.amount) {
-          additionalExpenseAmount = updateData.additionalExpenses.amount;
-        } else if (currentQuotation.additionalExpenses && currentQuotation.additionalExpenses.amount) {
-          additionalExpenseAmount = currentQuotation.additionalExpenses.amount;
+        if (updateData.additionalExpenses && Array.isArray(updateData.additionalExpenses)) {
+          additionalExpenseAmount = updateData.additionalExpenses.reduce((sum, expense) => sum + (expense.amount || 0), 0);
+        } else if (currentQuotation.additionalExpenses && Array.isArray(currentQuotation.additionalExpenses)) {
+          additionalExpenseAmount = currentQuotation.additionalExpenses.reduce((sum, expense) => sum + (expense.amount || 0), 0);
+        } else if (currentQuotation.additionalExpenses && !Array.isArray(currentQuotation.additionalExpenses)) {
+          // Handle legacy object format
+          additionalExpenseAmount = currentQuotation.additionalExpenses.amount || 0;
         }
 
         // Apply discount
@@ -1743,7 +1801,7 @@ quotationData.deliveryAddress = customer.address
       }
 
       // Only accepted quotations can be sent for review
-      if (quotation.status !== 'accepted' && quotation.status !== 'booked') {
+      if (quotation.status !== 'accepted' && quotation.status !== 'booked' && quotation.status !== 'rejected') {
         throw createError.badRequest('Only accepted quotations can be sent for review');
       }
 
@@ -1805,6 +1863,8 @@ quotationData.deliveryAddress = customer.address
         updatedBy: userId
       });
       quotation.updatedBy = userId;
+
+      await this.updateInventoryForQuotation(quotation.items,'accepted');
 
       await quotation.save();
 
@@ -2503,8 +2563,10 @@ quotationData.deliveryAddress = customer.address
       const itemSellingAmount = quotation.items.reduce((sum, item) => 
         sum + (item.totalPrice || 0), 0);
 
-      // Calculate additional expenses
-      const additionalExpenseAmount = quotation.additionalExpenses?.amount || 0;
+      // Calculate additional expenses (sum of all expenses in array)
+      const additionalExpenseAmount = quotation.additionalExpenses && Array.isArray(quotation.additionalExpenses)
+        ? quotation.additionalExpenses.reduce((sum, expense) => sum + (expense.amount || 0), 0)
+        : (quotation.additionalExpenses?.amount || 0); // Fallback for legacy object format
       const totalDiscount = quotation.totalDiscount || 0;
       const vatAmount = quotation.vatAmount || 0;
 

@@ -215,28 +215,28 @@ const quotationSchema = new mongoose.Schema({
   // Items
   items: [quotationItemSchema],
 
-  // Additional Expenses
-  additionalExpenses: {
-    expenceType:{
+  // Additional Expenses (Array of expense objects)
+  additionalExpenses: [{
+    expenceType: {
       type: String,
-      enum: ['shipping', 'accessories', 'Rta Fees',"COO Fees","Customs","Insurance","Other","none"],
+      enum: ['shipping', 'accessories', 'Rta Fees', "COO Fees", "Customs", "Insurance", "Other", "none"],
       required: false
     },
-    description:{
+    description: {
       type: String,
       required: false
     },
-    amount:{
+    amount: {
       type: Number,
       required: false,
       default: 0
     },
-    currency:{
+    currency: {
       type: String,
       required: false,
       default: 'AED'
     }
-  },
+  }],
   // Pricing
   subtotal: {
     type: Number,

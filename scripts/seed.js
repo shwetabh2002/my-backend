@@ -253,7 +253,7 @@ const seedAdminUser = async (adminRole, employeeRole, financeRole) => {
   }
 };
 
-const seedSampleUsers = async (employeeRole, financeRole, customerRole, supplierRole) => {
+const seedSampleUsers = async (employeeRole, financeRole, customerRole, supplierRole, adminUser) => {
   try {
     // Check if supplier user already exists
     const existingSupplier = await User.findOne({ email: 'test.supplier@example.com' });
@@ -272,7 +272,8 @@ const seedSampleUsers = async (employeeRole, financeRole, customerRole, supplier
       type: 'supplier',
       status: 'active',
       roleIds: [supplierRole._id],
-      address: 'Dubai Industrial City, UAE'
+      address: 'Dubai Industrial City, UAE',
+      createdBy: adminUser?._id || null
     });
 
     await supplierUser.save();
@@ -302,10 +303,10 @@ const runSeed = async () => {
     const supplierRole = roles.find(r => r.name === 'SUPPLIER');
     
     // Seed admin user
-    await seedAdminUser(adminRole, employeeRole, financeRole);
+    const adminUser = await seedAdminUser(adminRole, employeeRole, financeRole);
     
     // Seed sample users (including finance user)
-    await seedSampleUsers(employeeRole, financeRole, customerRole, supplierRole);
+    await seedSampleUsers(employeeRole, financeRole, customerRole, supplierRole, adminUser);
     
     console.log('Database seeding completed successfully!');
     console.log('\nDefault credentials:');

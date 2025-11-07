@@ -8,13 +8,15 @@ const customerInvoiceService = require('../services/customerInvoiceService');
 const getAllInvoices = async (req, res) => {
   try {
     const filters = req.query;
+    const currentUser = req.user;
+    const isAdmin = currentUser?.type === 'admin';
     const options = {
       page: parseInt(req.query.page) || 1,
       limit: parseInt(req.query.limit) || 10,
       sort: req.query.sort || '-createdAt'
     };
 
-    const result = await customerInvoiceService.getAllInvoices(filters, options);
+    const result = await customerInvoiceService.getAllInvoices(filters, options, currentUser, isAdmin);
 
     res.status(200).json({
       success: true,

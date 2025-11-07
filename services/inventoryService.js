@@ -705,7 +705,9 @@ class InventoryService {
         if (maxQuantity !== undefined) query.quantity.$lte = maxQuantity;
       }
 
-
+      // Filter out items where all VIN numbers are sold
+      // This ensures we only get items that have at least one non-sold VIN number
+      query['vinNumber.status'] = { $ne: 'sold' };
 
       // Calculate pagination
       const skip = (page - 1) * limit;
@@ -714,7 +716,7 @@ class InventoryService {
       const sort = {};
       sort[sortBy] = sortOrder === 'desc' ? -1 : 1;
 
-      // Get total count for pagination
+      // Get total count for pagination (with all filters applied)
       const totalItems = await Inventory.countDocuments(query);
 
       // Get paginated results
