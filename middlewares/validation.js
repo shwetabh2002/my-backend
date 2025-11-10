@@ -1345,7 +1345,7 @@ const schemas = {
 
   // Receipt validation schemas
   createReceipt: Joi.object({
-    customerId: Joi.string().pattern(/^[0-9a-fA-F]{24}$/).required().messages({
+    customerId: Joi.string().pattern(/^[0-9a-fA-F]{24}$/).messages({
       'string.pattern.base': 'Invalid customer ID format',
       'any.required': 'Customer ID is required'
     }),

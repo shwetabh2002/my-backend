@@ -35,9 +35,9 @@ class CustomerInvoiceService {
       // Build query
       const query = {};
 
-      // If user is not admin, filter by createdBy
+      // If user is not admin, filter by quotation's createdBy (stored in quotationCreatedBy field)
       if (!isAdmin && currentUser && currentUser._id) {
-        query.createdBy = currentUser._id;
+        query.quotationCreatedBy = currentUser._id;
       } else if (createdBy) {
         // Admin can filter by specific createdBy if provided
         query.createdBy = createdBy;
@@ -80,7 +80,7 @@ class CustomerInvoiceService {
         .populate('createdBy', 'name email')
         .populate('updatedBy', 'name email')
         .populate('customer.userId', 'name email trn ')
-        .populate('quotationId', 'quotationNumber title bookingAmount createdAt')
+        .populate('quotationId', 'quotationNumber title bookingAmount createdAt createdBy')
         .populate('items.itemId', 'itemName description')
         .populate('items.supplierId', 'name email custId')
         .populate('statusHistory.updatedBy', 'name email')
@@ -265,6 +265,7 @@ class CustomerInvoiceService {
         
         // System fields
         createdBy,
+        quotationCreatedBy: quotation.createdBy, // Store quotation's createdBy for efficient filtering
         status: 'draft'
       };
 
@@ -326,7 +327,7 @@ class CustomerInvoiceService {
 
 
       const receiptData = {
-        customerId: createdBy,
+        customerId: quotation.customer.userId,
         quotationId: invoiceData.quotationId,
         paymentMethod: invoiceData.customerPayment.paymentMethod || 'cash', // Use provided paymentMethod or default
         receiptDate: new Date(),
@@ -335,7 +336,7 @@ class CustomerInvoiceService {
         description: invoiceData.notes || `Booking payment for quotation ${quotation.quotationNumber}`, // Use provided description or default
       };
 
-      const receipt = await receiptService.createReceipt(receiptData, createdBy);
+      // const receipt = await receiptService.createReceipt(receiptData, createdBy);
 
       
       // Populate the created invoice

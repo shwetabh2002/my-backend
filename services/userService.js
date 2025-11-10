@@ -383,7 +383,7 @@ class UserService {
     delete customer.refreshToken;
     
     // Get quotation data for this customer
-    const quotations = await Quotation.find({ 'customer.userId': customerId })
+    const quotations = await Quotation.find({ 'customer.userId': customerId,status:{$ne:'confirmed'} })
       .select('quotationId quotationNumber status currency validTill createdAt bookingAmount')
       .populate('createdBy', 'name email')
       .sort('-createdAt')
@@ -398,10 +398,16 @@ class UserService {
       }, {})
     };
     
+    // Calculate total balance by summing all booking amounts
+    const totalBalance = quotations.reduce((sum, quote) => {
+      return sum + (quote.bookingAmount || 0);
+    }, 0);
+    
     // Add quotation data to customer response
     customer.quotations = {
       data: quotations,
-      statistics: quotationStats
+      statistics: quotationStats,
+      totalBalance: totalBalance
     };
     
     return customer;

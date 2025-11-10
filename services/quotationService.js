@@ -231,8 +231,8 @@ quotationData.deliveryAddress = customer.address
                   currency: quotation.currency,
                   description: description || `Booking payment for quotation ${quotation.quotationNumber}`, // Use provided description or default
                 };
-      
-                const receipt = await receiptService.createReceipt(receiptData, createdBy);
+               const isFromOrder = true;
+                const receipt = await receiptService.createReceipt(receiptData, createdBy,isFromOrder);
                 console.log('Automatic receipt created successfully:', receipt.receiptNumber);
                 
                 // Add receipt information to quotation response
@@ -1548,7 +1548,7 @@ quotationData.deliveryAddress = customer.address
       // Pagination
       const skip = (page - 1) * limit;
       const limitNum = parseInt(limit);
-      query.status = { $in: ['accepted', 'approved', 'confirmed','review','rejected','booked'] };
+      query.status = { $in: ['accepted', 'approved','review','rejected','booked'] };
 
       // Execute query with pagination
       const quotations = await Quotation.find(query)

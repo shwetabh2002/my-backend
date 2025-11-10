@@ -2,6 +2,7 @@ const Receipt = require('../models/Receipt');
 const User = require('../models/User');
 const Company = require('../models/Company');
 const createError = require('http-errors');
+const Quotation = require('../models/quotation');
 
 class ReceiptService {
   /**
@@ -10,7 +11,7 @@ class ReceiptService {
    * @param {string} createdBy - User ID who created the receipt
    * @returns {Promise<Object>} Created receipt
    */
-  async createReceipt(receiptData, createdBy) {
+  async createReceipt(receiptData, createdBy,isFromOrder = false) {
     try {
       // Verify customer exists and fetch customer details
       const customer = await User.findById(receiptData.customerId);
@@ -29,6 +30,20 @@ class ReceiptService {
         countryCode: customer.countryCode || '+971',
         trn: customer.trn || null
       };
+
+if(!isFromOrder){
+  const quotation = await Quotation.findById(receiptData.quotationId);
+  if(!quotation){
+    throw createError.notFound('Order not found');
+  }
+  const newBookingAmount = quotation.bookingAmount + receiptData.amount;
+  await Quotation.findByIdAndUpdate(receiptData.quotationId,{bookingAmount:newBookingAmount});
+  const isFullyPaid = newBookingAmount === quotation.totalAmount;
+  // if(isFullyPaid){
+  //   await Quotation.findByIdAndUpdate(receiptData.quotationId,{statusHistory:[...quotation.statusHistory,{status:'confirmed',date:new Date(),updatedBy:createdBy}],status:'confirmed'});
+  // }
+}
+
 
       // Create receipt with fetched customer data
       const receipt = new Receipt({

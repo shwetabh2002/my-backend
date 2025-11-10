@@ -313,6 +313,10 @@ const customerInvoiceSchema = new mongoose.Schema({
     ref: 'User',
     required: true
   },
+  quotationCreatedBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User'
+  },
   updatedBy: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User'
@@ -335,6 +339,7 @@ customerInvoiceSchema.index({ dueDate: 1 });
 customerInvoiceSchema.index({ status: 1, createdAt: -1, currency: 1 });
 customerInvoiceSchema.index({ 'customer.custId': 1, status: 1 });
 customerInvoiceSchema.index({ createdBy: 1, createdAt: -1 });
+customerInvoiceSchema.index({ quotationCreatedBy: 1, createdAt: -1 });
 customerInvoiceSchema.index({ currency: 1, status: 1, finalTotal: -1 });
 
 // Virtual for invoice age

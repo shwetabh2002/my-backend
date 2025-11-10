@@ -228,7 +228,7 @@ class InventoryService {
           quotations = await Quotation.find({
             'items.vinNumbers.chasisNumber': { $in: chassisNumbers },
             status:{$ne:'rejected'}
-          }).select('quotationId quotationNumber status createdAt customer.name items.vinNumbers bookingAmount');
+          }).select('quotationId quotationNumber status createdAt customer.name items.vinNumbers bookingAmount createdBy').populate('createdBy', 'name email');
 
           // console.log('Found quotations:', quotations.length);
           if (quotations.length > 0) {
@@ -261,7 +261,10 @@ class InventoryService {
                   quotationNumber: quotation.quotationNumber,
                   status: quotation.status,
                   createdAt: quotation.createdAt,
-                  customerName: quotation.customer?.name
+                  customerName: quotation.customer?.name,
+                  createdBy: quotation.createdBy,
+                  createdByName: quotation.createdBy?.name,
+                  createdByEmail: quotation.createdBy?.email
                 }
               };
               // console.log('VIN with quotation:', JSON.stringify(vinWithQuotation, null, 2));
@@ -707,7 +710,12 @@ class InventoryService {
 
       // Filter out items where all VIN numbers are sold
       // This ensures we only get items that have at least one non-sold VIN number
-      query['vinNumber.status'] = { $ne: 'sold' };
+      // Use $elemMatch to correctly query nested array
+      query.vinNumber = {
+        $elemMatch: {
+          status: { $ne: 'sold' }
+        }
+      };
 
       // Calculate pagination
       const skip = (page - 1) * limit;
