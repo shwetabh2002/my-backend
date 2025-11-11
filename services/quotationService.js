@@ -38,7 +38,7 @@ class QuotationService {
         date: new Date()
       }];
       const validTill = new Date(Date.now() + 3 * 24 * 60 * 60 * 1000); //3 days from now
-  const quotationTotal = await Quotation.countDocuments() ||1;
+  const quotationTotal = await Quotation.countDocuments() || 0;
   const year = new Date().getFullYear();
   const newNumber = quotationTotal + 1 ;
 
