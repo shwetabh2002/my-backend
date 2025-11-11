@@ -1494,9 +1494,11 @@ quotationData.deliveryAddress = customer.address
    * Get confirmed orders with dynamic filters
    * @param {Object} filters - Filter criteria
    * @param {Object} options - Query options (page, limit, sort, etc.)
+   * @param {Object} currentUser - Current user object
+   * @param {boolean} isAdmin - Whether user is admin
    * @returns {Promise<Object>} Paginated confirmed orders
    */
-  async getConfirmedOrders(filters = {}, options = {}) {
+  async getConfirmedOrders(filters = {}, options = {}, currentUser, isAdmin) {
     try {
       const {
         page = 1,
@@ -1516,9 +1518,16 @@ quotationData.deliveryAddress = customer.address
       // Build query
       const query = {};
 
+      // Permission handling: Non-admin users can only see their own orders
+      if (!isAdmin && currentUser && currentUser._id) {
+        query.createdBy = currentUser._id;
+      } else if (createdBy) {
+        // Admin can filter by specific createdBy if provided
+        query.createdBy = createdBy;
+      }
+
       if (status) query.status = status;
       if (customerId) query['customer.custId'] = customerId;
-      if (createdBy) query.createdBy = createdBy;
       if (currency) query.currency = currency;
 
       // Date range filters
@@ -1563,9 +1572,14 @@ quotationData.deliveryAddress = customer.address
       // Get total count for pagination
       const total = await Quotation.countDocuments(query);
 
-      // Get summary data for dynamic filters
+      // Get summary data for dynamic filters (respect permissions)
+      const summaryMatchQuery = { status: 'confirmed' };
+      if (!isAdmin && currentUser && currentUser._id) {
+        summaryMatchQuery.createdBy = currentUser._id;
+      }
+      
       const summaryData = await Quotation.aggregate([
-        { $match: {} }, // Match all quotations for summary
+        { $match: summaryMatchQuery }, // Match confirmed orders with permission filter
         {
           $lookup: {
             from: 'users',

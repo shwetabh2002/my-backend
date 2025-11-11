@@ -753,6 +753,9 @@ const getApprovedOrders = async (req, res) => {
  */
 const getConfirmedOrders = async (req, res) => {
   try {
+    const currentUser = req.user;
+    const isAdmin = currentUser?.type === 'admin';
+    
     const {
       page = 1,
       limit = 10,
@@ -782,7 +785,7 @@ const getConfirmedOrders = async (req, res) => {
       validTillTo
     };
 
-    const result = await quotationService.getConfirmedOrders(filters, options);
+    const result = await quotationService.getConfirmedOrders(filters, options, currentUser, isAdmin);
 
     res.status(200).json({
       success: true,
