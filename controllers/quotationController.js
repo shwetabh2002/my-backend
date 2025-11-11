@@ -746,6 +746,60 @@ const getApprovedOrders = async (req, res) => {
   }
 };
 
+/**
+ * Get confirmed orders with dynamic filters
+ * @param {Object} req - Express request object
+ * @param {Object} res - Express response object
+ */
+const getConfirmedOrders = async (req, res) => {
+  try {
+    const {
+      page = 1,
+      limit = 10,
+      sort = '-createdAt',
+      search,
+      currency,
+      customerId,
+      createdBy,
+      dateFrom,
+      dateTo,
+      validTillFrom,
+      validTillTo
+    } = req.query;
+
+    const filters = {};
+    const options = {
+      page: parseInt(page),
+      limit: parseInt(limit),
+      sort,
+      search,
+      currency,
+      customerId,
+      createdBy,
+      dateFrom,
+      dateTo,
+      validTillFrom,
+      validTillTo
+    };
+
+    const result = await quotationService.getConfirmedOrders(filters, options);
+
+    res.status(200).json({
+      success: true,
+      message: 'Confirmed Orders fetched successfully',
+      data: result.quotations,
+      pagination: result.pagination,
+      summary: result.summary
+    });
+  } catch (error) {
+    res.status(error.statusCode || 500).json({
+      success: false,
+      message: error.message,
+      ...(process.env.NODE_ENV === 'development' && { stack: error.stack })
+    });
+  }
+};
+
 // Get quotation analytics for dashboard
 const getQuotationAnalytics = async (req, res) => {
   try {
@@ -798,5 +852,6 @@ module.exports = {
   confirmQuotation,
   getReviewOrders,
   getApprovedOrders,
+  getConfirmedOrders,
   getQuotationAnalytics
 };

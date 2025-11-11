@@ -1491,6 +1491,177 @@ quotationData.deliveryAddress = customer.address
   }
 
   /**
+   * Get confirmed orders with dynamic filters
+   * @param {Object} filters - Filter criteria
+   * @param {Object} options - Query options (page, limit, sort, etc.)
+   * @returns {Promise<Object>} Paginated confirmed orders
+   */
+  async getConfirmedOrders(filters = {}, options = {}) {
+    try {
+      const {
+        page = 1,
+        limit = 10,
+        sort = '-createdAt',
+        search,
+        status,
+        customerId,
+        createdBy,
+        currency,
+        dateFrom,
+        dateTo,
+        validTillFrom,
+        validTillTo
+      } = options;
+
+      // Build query
+      const query = {};
+
+      if (status) query.status = status;
+      if (customerId) query['customer.custId'] = customerId;
+      if (createdBy) query.createdBy = createdBy;
+      if (currency) query.currency = currency;
+
+      // Date range filters
+      if (dateFrom || dateTo) {
+        query.createdAt = {};
+        if (dateFrom) query.createdAt.$gte = new Date(dateFrom);
+        if (dateTo) query.createdAt.$lte = new Date(dateTo);
+      }
+
+      if (validTillFrom || validTillTo) {
+        query.validTill = {};
+        if (validTillFrom) query.validTill.$gte = new Date(validTillFrom);
+        if (validTillTo) query.validTill.$lte = new Date(validTillTo);
+      }
+
+      // Search functionality
+      if (search) {
+        query.$or = [
+          { quotationNumber: new RegExp(search, 'i') },
+          { title: new RegExp(search, 'i') },
+          { 'customer.name': new RegExp(search, 'i') },
+          { 'customer.email': new RegExp(search, 'i') },
+          { 'customer.custId': new RegExp(search, 'i') }
+        ];
+      }
+
+      // Pagination
+      const skip = (page - 1) * limit;
+      const limitNum = parseInt(limit);
+      query.status = 'confirmed';
+
+      // Execute query with pagination
+      const quotations = await Quotation.find(query)
+        .populate('createdBy', 'name email')
+        .populate('updatedBy', 'name email')
+        .populate('customer.userId', 'name email')
+        .populate('items.supplierId', 'name email custId')
+        .sort(sort)
+        .skip(skip)
+        .limit(limitNum);
+
+      // Get total count for pagination
+      const total = await Quotation.countDocuments(query);
+
+      // Get summary data for dynamic filters
+      const summaryData = await Quotation.aggregate([
+        { $match: {} }, // Match all quotations for summary
+        {
+          $lookup: {
+            from: 'users',
+            localField: 'createdBy',
+            foreignField: '_id',
+            as: 'creatorInfo'
+          }
+        },
+        {
+          $group: {
+            _id: null,
+            totalQuotations: { $sum: 1 },
+            statuses: { $addToSet: '$status' },
+            currencies: { $addToSet: '$currency' },
+            customers: { $addToSet: '$customer.custId' },
+            creators: { 
+              $addToSet: { $arrayElemAt: ['$creatorInfo.name', 0] }
+            },
+            // Date ranges
+            minCreatedDate: { $min: '$createdAt' },
+            maxCreatedDate: { $max: '$createdAt' },
+            minValidTillDate: { $min: '$validTill' },
+            maxValidTillDate: { $max: '$validTill' }
+          }
+        }
+      ]);
+
+      const summary = summaryData[0] || {
+        totalQuotations: 0,
+        statuses: [],
+        currencies: [],
+        customers: [],
+        creators: [],
+        minCreatedDate: null,
+        maxCreatedDate: null,
+        minValidTillDate: null,
+        maxValidTillDate: null
+      };
+
+      const result = {
+        quotations,
+        pagination: {
+          page: parseInt(page),
+          limit: limitNum,
+          total,
+          pages: Math.ceil(total / limitNum),
+          hasNext: page < Math.ceil(total / limitNum),
+          hasPrev: page > 1
+        },
+        summary: {
+          appliedFilters: {
+            search: search || null,
+            status: status || null,
+            customerId: customerId || null,
+            createdBy: createdBy || null,
+            currency: currency || null,
+            dateFrom: dateFrom || null,
+            dateTo: dateTo || null,
+            validTillFrom: validTillFrom || null,
+            validTillTo: validTillTo || null
+          },
+          availableFilters: {
+            // Basic filters
+            statuses: summary.statuses ? summary.statuses.sort() : [],
+            currencies: summary.currencies ? summary.currencies.sort() : [],
+            customers: summary.customers ? summary.customers.sort() : [],
+            creators: summary.creators ? summary.creators.sort() : [],
+            
+            // Date ranges for date pickers
+            dateRanges: {
+              created: {
+                min: summary.minCreatedDate,
+                max: summary.maxCreatedDate
+              },
+              validTill: {
+                min: summary.minValidTillDate,
+                max: summary.maxValidTillDate
+              }
+            },
+            
+            // Counts for each filter option
+            counts: {
+              total: summary.totalQuotations || 0
+            }
+          }
+        }
+      };
+
+      return result;
+    } catch (error) {
+      console.error('Error getting confirmed orders:', error);
+      throw createError.internal('Failed to get confirmed orders');
+    }
+  }
+
+  /**
    * Get all quotations with filtering, sorting, and pagination
    * @param {Object} filters - Filter criteria
    * @param {Object} options - Query options (page, limit, sort, etc.)
