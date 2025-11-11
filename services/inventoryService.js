@@ -90,6 +90,82 @@ class InventoryService {
     return sku;
   }
 
+  // Bulk create inventory items
+  async bulkCreateInventory(itemsData, currentUser) {
+    try {
+      const results = {
+        success: [],
+        failed: [],
+        total: itemsData.length
+      };
+
+      // Process each item
+      for (let i = 0; i < itemsData.length; i++) {
+        const itemData = itemsData[i];
+        try {
+          // Auto-generate SKU if not provided
+          if (!itemData.sku) {
+            itemData.sku = await this.generateSKU(itemData);
+          } else {
+            // Check if provided SKU already exists
+            const existingItem = await Inventory.findOne({ sku: itemData.sku });
+            if (existingItem) {
+              throw createError.conflict(`SKU ${itemData.sku} already exists`);
+            }
+          }
+
+          // Auto-generate tags from name and description
+          itemData.tags = this.generateTags(itemData);
+
+          // Set audit fields
+          itemData.createdBy = currentUser._id;
+          itemData.updatedBy = currentUser._id;
+
+          // Create inventory item
+          const inventory = await Inventory.create(itemData);
+          
+          // Populate creator, updater, and supplier info
+          await inventory.populate('createdBy', 'name email');
+          await inventory.populate('updatedBy', 'name email');
+          if (inventory.supplierId) {
+            await inventory.populate('supplierId', 'name email custId');
+          }
+
+          results.success.push({
+            row: i + 1,
+            data: inventory,
+            sku: inventory.sku
+          });
+        } catch (error) {
+          let errorMessage = 'Unknown error';
+          
+          if (error.statusCode) {
+            errorMessage = error.message;
+          } else if (error.name === 'ValidationError') {
+            const validationErrors = Object.values(error.errors).map(err => err.message);
+            errorMessage = `Validation failed: ${validationErrors.join(', ')}`;
+          } else if (error.code === 11000) {
+            // Duplicate key error
+            const field = Object.keys(error.keyPattern)[0];
+            errorMessage = `${field} already exists`;
+          } else {
+            errorMessage = error.message || 'Failed to create item';
+          }
+
+          results.failed.push({
+            row: i + 1,
+            data: itemData,
+            error: errorMessage
+          });
+        }
+      }
+
+      return results;
+    } catch (error) {
+      throw error;
+    }
+  }
+
   // Generate tags from name and description
   generateTags(inventoryData) {
     const { name, description, brand, category, subcategory, model, year, color } = inventoryData;

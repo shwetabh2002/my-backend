@@ -328,34 +328,40 @@ const schemas = {
       'string.max': 'Category cannot exceed 100 characters',
       'any.required': 'Category is required'
     }),
-    subcategory: Joi.string().min(1).max(100).optional().messages({
+    subcategory: Joi.string().min(1).max(100).required().messages({
       'string.min': 'Subcategory must be at least 1 character long',
-      'string.max': 'Subcategory cannot exceed 100 characters'
+      'string.max': 'Subcategory cannot exceed 100 characters',
+      'any.required': 'Subcategory is required'
     }),
     brand: Joi.string().min(2).max(100).required().messages({
       'string.min': 'Brand must be at least 2 characters long',
       'string.max': 'Brand cannot exceed 100 characters',
       'any.required': 'Brand is required'
     }),
-    model: Joi.string().min(1).max(100).optional().messages({
+    model: Joi.string().min(1).max(100).required().messages({
       'string.min': 'Model must be at least 1 character long',
-      'string.max': 'Model cannot exceed 100 characters'
+      'string.max': 'Model cannot exceed 100 characters',
+      'any.required': 'Model is required'
     }),
-    year: Joi.number().integer().min(1900).max(new Date().getFullYear() + 1).optional().messages({
+    year: Joi.number().integer().min(1900).max(new Date().getFullYear() + 1).required().messages({
       'number.integer': 'Year must be an integer',
       'number.min': 'Year must be at least 1900',
-      'number.max': 'Year cannot be in the future'
+      'number.max': 'Year cannot be in the future',
+      'any.required': 'Year is required'
     }),
-    color: Joi.string().min(1).max(50).optional().messages({
+    color: Joi.string().min(1).max(50).required().messages({
       'string.min': 'Color must be at least 1 character long',
-      'string.max': 'Color cannot exceed 50 characters'
+      'string.max': 'Color cannot exceed 50 characters',
+      'any.required': 'Color is required'
     }),
-    interiorColor: Joi.string().min(1).max(50).optional().messages({
+    interiorColor: Joi.string().min(1).max(50).required().messages({
       'string.min': 'Interior color must be at least 1 character long',
-      'string.max': 'Interior color cannot exceed 50 characters'
+      'string.max': 'Interior color cannot exceed 50 characters',
+      'any.required': 'Interior color is required'
     }),
-    description: Joi.string().max(1000).optional().messages({
-      'string.max': 'Description cannot exceed 1000 characters'
+    description: Joi.string().max(1000).required().messages({
+      'string.max': 'Description cannot exceed 1000 characters',
+      'any.required': 'Description is required'
     }),
     compatibility: Joi.array().items(Joi.object({
       brand: Joi.string().min(1).max(100).optional(),
@@ -378,9 +384,10 @@ const schemas = {
       'number.positive': 'Selling price must be positive',
       'any.required': 'Selling price is required'
     }),
-    quantity: Joi.number().integer().min(0).default(0).messages({
+    quantity: Joi.number().integer().min(0).required().messages({
       'number.integer': 'Quantity must be an integer',
-      'number.min': 'Quantity cannot be negative'
+      'number.min': 'Quantity cannot be negative',
+      'any.required': 'Quantity is required'
     }),
     inStock: Joi.boolean().default(true).messages({
       'boolean.base': 'inStock must be a boolean'
@@ -400,8 +407,10 @@ const schemas = {
         'string.max': 'Chassis number cannot exceed 50 characters',
         'any.required': 'Chassis number is required'
       })
-    })).optional().messages({
-      'array.base': 'VIN numbers must be an array'
+    })).required().min(1).messages({
+      'array.base': 'VIN numbers must be an array',
+      'any.required': 'VIN numbers are required',
+      'array.min': 'At least one VIN number is required'
     }),
     dimensions: Joi.object({
       length: Joi.number().optional(),

@@ -22,6 +22,24 @@ router.post('/',
   inventoryController.createInventory
 );
 
+// Bulk upload inventory from Excel file
+router.post('/bulk-upload',
+  canAccessResource('inventory', 'create'),
+  (req, res, next) => {
+    inventoryController.upload.single('file')(req, res, (err) => {
+      if (err) {
+        return res.status(400).json({
+          success: false,
+          message: err.message || 'File upload error',
+          statusCode: 400
+        });
+      }
+      next();
+    });
+  },
+  inventoryController.bulkUploadInventory
+);
+
 router.get('/',
   canAccessResource('inventory', 'read'),
   inventoryController.getInventory
