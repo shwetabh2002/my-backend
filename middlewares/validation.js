@@ -135,6 +135,15 @@ const schemas = {
       'any.only': 'User type must be employee, admin, or customer'
     }),
     status: Joi.string().valid('active', 'inactive', 'suspended'),
+    address: Joi.string().max(200).messages({
+      'string.max': 'Address cannot exceed 200 characters'
+    }),
+    trn: Joi.string().max(50).optional().messages({
+      'string.max': 'TRN number cannot exceed 50 characters'
+    }),
+    custId: Joi.string().pattern(/^CUS-\d{3}$/).optional().messages({
+      'string.pattern.base': 'Customer ID must be in format CUS-XXX'
+    }),
     roleIds: Joi.array().items(Joi.string().hex().length(24)).min(1).messages({
       'array.min': 'At least one role is required'
     })
