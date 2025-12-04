@@ -11,8 +11,7 @@ class AuthService {
   async login(email, password, companyId) {
     try {
       // Find user with password selected
-      console.log(email, password, companyId);
-      const user = await User.findOne({ email , companyId }).select('+password');
+      const user = await User.findOne({ email, companyId }).select('+password');
       
       if (!user) {
         throw createError.unauthorized('Invalid email or password');
@@ -155,7 +154,7 @@ class AuthService {
   // Validate user permissions
   async validateUserPermissions(userId, requiredPermissions, companyId) {
     try {
-      const user = await User.findById({_id: userId, companyId: companyId}).populate('roleIds', 'permissions');
+      const user = await User.findOne({_id: userId, companyId: companyId}).populate('roleIds', 'permissions');
       
       if (!user) {
         throw createError.notFound('User not found');
@@ -184,7 +183,7 @@ class AuthService {
   // Get user profile
   async getUserProfile(userId, companyId) {
     try {
-      const user = await User.findById({_id: userId, companyId: companyId})
+      const user = await User.findOne({_id: userId, companyId: companyId})
         .select('-password -refreshToken')
         .populate('roleIds', 'name permissions description');
 
@@ -209,7 +208,7 @@ class AuthService {
   // Get user permissions summary
   async getUserPermissions(userId, companyId) {
     try {
-      const user = await User.findById({_id: userId, companyId: companyId})
+      const user = await User.findOne({_id: userId, companyId: companyId})
         .select('roleIds type status')
         .populate('roleIds', 'name permissions description');
 
@@ -239,7 +238,7 @@ class AuthService {
   // Change password
   async changePassword(userId, currentPassword, newPassword, companyId) {
     try {
-      const user = await User.findById({_id: userId, companyId: companyId}).select('+password');
+      const user = await User.findOne({_id: userId, companyId: companyId}).select('+password');
       
       if (!user) {
         throw createError.notFound('User not found');
@@ -310,8 +309,9 @@ class AuthService {
       // Find user with valid reset token
       const user = await User.findOne({
         resetPasswordToken: resetTokenHash,
-        resetPasswordExpires: { $gt: Date.now() }
-      , companyId}).select('+resetPasswordToken +resetPasswordExpires');
+        resetPasswordExpires: { $gt: Date.now() },
+        companyId: companyId
+      }).select('+resetPasswordToken +resetPasswordExpires');
 
       if (!user) {
         throw createError.badRequest('Invalid or expired reset token');
@@ -333,13 +333,13 @@ class AuthService {
   async adminResetPassword(adminUserId, targetUserId, newPassword, companyId) {
     try {
       // Verify admin exists and is active
-      const admin = await User.findById({_id: adminUserId, companyId: companyId});
+      const admin = await User.findOne({_id: adminUserId, companyId: companyId});
       if (!admin || admin.type !== 'admin' || admin.status !== 'active') {
         throw createError.forbidden('Only active admins can reset passwords');
       }
 
       // Find target user
-      const targetUser = await User.findById({_id: targetUserId, companyId: companyId});
+      const targetUser = await User.findOne({_id: targetUserId, companyId: companyId});
       if (!targetUser) {
         throw createError.notFound('User not found');
       }

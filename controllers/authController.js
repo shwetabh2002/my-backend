@@ -131,8 +131,9 @@ class AuthController {
   getProfile = async (req, res) => {
     try {
       const userId = req.user._id;
+      const companyId = req.companyId || req.query.companyId;
 
-      const user = await authService.getUserProfile(userId);
+      const user = await authService.getUserProfile(userId, companyId);
 
       res.status(200).json({
         success: true,
@@ -164,8 +165,9 @@ class AuthController {
     try {
       const userId = req.user._id;
       const { currentPassword, newPassword } = req.body;
+      const companyId = req.companyId || req.query.companyId;
 
-      const result = await authService.changePassword(userId, currentPassword, newPassword);
+      const result = await authService.changePassword(userId, currentPassword, newPassword, companyId);
 
       res.status(200).json({
         success: true,
@@ -196,8 +198,9 @@ class AuthController {
   getUserPermissions = async (req, res) => {
     try {
       const userId = req.user._id;
+      const companyId = req.companyId || req.query.companyId;
 
-      const permissions = await authService.getUserPermissions(userId);
+      const permissions = await authService.getUserPermissions(userId, companyId);
 
       res.status(200).json({
         success: true,
@@ -258,8 +261,17 @@ class AuthController {
   forgotPassword = async (req, res) => {
     try {
       const { email } = req.body;
+      const { companyId } = req.query;
 
-      const result = await authService.forgotPassword(email);
+      if (!companyId) {
+        return res.status(400).json({
+          success: false,
+          message: 'companyId is required in query parameters',
+          statusCode: 400
+        });
+      }
+
+      const result = await authService.forgotPassword(email, companyId);
 
       res.status(200).json({
         success: true,
@@ -290,8 +302,17 @@ class AuthController {
   resetPassword = async (req, res) => {
     try {
       const { token, newPassword } = req.body;
+      const { companyId } = req.query;
 
-      const result = await authService.resetPassword(token, newPassword);
+      if (!companyId) {
+        return res.status(400).json({
+          success: false,
+          message: 'companyId is required in query parameters',
+          statusCode: 400
+        });
+      }
+
+      const result = await authService.resetPassword(token, newPassword, companyId);
 
       res.status(200).json({
         success: true,
@@ -323,8 +344,17 @@ class AuthController {
     try {
       const adminUserId = req.user._id;
       const { userId, newPassword } = req.body;
+      const companyId = req.companyId || req.query.companyId;
 
-      const result = await authService.adminResetPassword(adminUserId, userId, newPassword);
+      if (!companyId) {
+        return res.status(400).json({
+          success: false,
+          message: 'companyId is required in query parameters',
+          statusCode: 400
+        });
+      }
+
+      const result = await authService.adminResetPassword(adminUserId, userId, newPassword, companyId);
 
       res.status(200).json({
         success: true,
