@@ -52,8 +52,27 @@ const authenticate = async (req, res, next) => {
       });
     }
 
+    // Validate companyId from token matches user's companyId
+    const tokenCompanyId = decoded.companyId || null;
+    if (user.companyId && tokenCompanyId && user.companyId !== tokenCompanyId) {
+      return res.status(403).json({
+        success: false,
+        message: 'Company mismatch - token companyId does not match user companyId'
+      });
+    }
+
     // Attach user to request
     req.user = user;
+    
+    // Attach companyId to request (from token, user, or query)
+    // Priority: query param > token > user.companyId
+    req.companyId = req.query.companyId || tokenCompanyId || user.companyId || null;
+    
+    // Also set req.query.companyId if not provided, so existing code can use it
+    if (!req.query.companyId && req.companyId) {
+      req.query.companyId = req.companyId;
+    }
+    
     next();
 
   } catch (error) {

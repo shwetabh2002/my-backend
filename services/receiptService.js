@@ -11,7 +11,7 @@ class ReceiptService {
    * @param {string} createdBy - User ID who created the receipt
    * @returns {Promise<Object>} Created receipt
    */
-  async createReceipt(receiptData, createdBy,isFromOrder = false) {
+  async createReceipt(receiptData, createdBy, isFromOrder = false, companyId = null) {
     try {
       // Verify customer exists and fetch customer details
       const customer = await User.findById(receiptData.customerId);
@@ -49,7 +49,8 @@ if(!isFromOrder){
       const receipt = new Receipt({
         ...receiptData,
         customer: customerData,
-        createdBy
+        createdBy,
+        ...(companyId && { companyId })
       });
 
       // Remove customerId from the receipt data as it's not part of the schema
@@ -78,9 +79,14 @@ if(!isFromOrder){
    * @param {string} receiptId - Receipt ID
    * @returns {Promise<Object>} Receipt
    */
-  async getReceiptById(receiptId) {
+  async getReceiptById(receiptId, companyId = null) {
     try {
-      const receipt = await Receipt.findById(receiptId)
+      const query = { _id: receiptId };
+      if (companyId) {
+        query.companyId = companyId;
+      }
+      
+      const receipt = await Receipt.findOne(query)
         .populate('createdBy', 'name email')
         .populate('customer.userId', 'name email trn')
         .populate('quotationId', 'quotationNumber status totalAmount bookingAmount');
@@ -131,7 +137,7 @@ if(!isFromOrder){
    * @param {Object} filters - Filter options
    * @returns {Promise<Object>} Receipts with pagination
    */
-  async getAllReceipts(filters = {}) {
+  async getAllReceipts(filters = {}, companyId = null) {
     try {
       const {
         page = 1,
@@ -148,6 +154,11 @@ if(!isFromOrder){
 
       // Build query
       const query = {};
+
+      // Filter by companyId if provided
+      if (companyId) {
+        query.companyId = companyId;
+      }
 
       // Search filter
       if (search) {
@@ -329,10 +340,15 @@ if(!isFromOrder){
    * @param {Object} query - Query filters
    * @returns {Promise<Object>} Receipt summary
    */
-  async getReceiptSummary(query = {}) {
+  async getReceiptSummary(query = {}, companyId = null) {
     try {
+      const matchQuery = { ...query };
+      if (companyId) {
+        matchQuery.companyId = companyId;
+      }
+      
       const pipeline = [
-        { $match: query },
+        { $match: matchQuery },
         {
           $group: {
             _id: null,
@@ -377,10 +393,9 @@ if(!isFromOrder){
    * @param {Object} filters - Additional filters
    * @returns {Promise<Object>} Customer receipts
    */
-  async getReceiptsByCustomer(customerId, filters = {}) {
+  async getReceiptsByCustomer(customerId, filters = {}, companyId = null) {
     try {
-      const query = { 'customer.userId': customerId, ...filters };
-      return await this.getAllReceipts({ ...filters, customerId });
+      return await this.getAllReceipts({ ...filters, customerId }, companyId);
     } catch (error) {
       throw error;
     }
@@ -392,9 +407,9 @@ if(!isFromOrder){
    * @param {Object} filters - Additional filters
    * @returns {Promise<Object>} Quotation receipts
    */
-  async getReceiptsByQuotation(quotationId, filters = {}) {
+  async getReceiptsByQuotation(quotationId, filters = {}, companyId = null) {
     try {
-      return await this.getAllReceipts({ ...filters, quotationId });
+      return await this.getAllReceipts({ ...filters, quotationId }, companyId);
     } catch (error) {
       throw error;
     }

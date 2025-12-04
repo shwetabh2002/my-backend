@@ -91,6 +91,11 @@ const expenseSchema = new mongoose.Schema({
   
   
   // Audit Fields
+  companyId: {
+    type: String,
+    trim: true,
+    index: true
+  },
   createdBy: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',

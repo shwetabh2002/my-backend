@@ -5,7 +5,8 @@ class ExpenseController {
   // Get all expenses
   getAllExpenses = asyncHandler(async (req, res) => {
     const filters = req.query;
-    const result = await expenseService.getAllExpenses(filters);
+    const { companyId } = req.query;
+    const result = await expenseService.getAllExpenses(filters, {}, companyId);
 
     res.status(200).json({
       success: true,
@@ -17,7 +18,8 @@ class ExpenseController {
   // Get expense by ID
   getExpenseById = asyncHandler(async (req, res) => {
     const expenseId = req.params.id;
-    const expense = await expenseService.getExpenseById(expenseId);
+    const { companyId } = req.query;
+    const expense = await expenseService.getExpenseById(expenseId, companyId);
 
     res.status(200).json({
       success: true,
@@ -30,8 +32,9 @@ class ExpenseController {
   createExpense = asyncHandler(async (req, res) => {
     const expenseData = req.body;
     const createdBy = req.user._id;
+    const { companyId } = req.query;
 
-    const expense = await expenseService.createExpense(expenseData, createdBy);
+    const expense = await expenseService.createExpense(expenseData, createdBy, companyId);
 
     res.status(201).json({
       success: true,
@@ -116,7 +119,8 @@ class ExpenseController {
   // Get expenses by category
   getExpensesByCategory = asyncHandler(async (req, res) => {
     const category = req.params.category;
-    const expenses = await expenseService.getExpensesByCategory(category);
+    const { companyId } = req.query;
+    const expenses = await expenseService.getExpensesByCategory(category, companyId);
 
     res.status(200).json({
       success: true,
@@ -128,7 +132,8 @@ class ExpenseController {
   // Get expenses by status
   getExpensesByStatus = asyncHandler(async (req, res) => {
     const status = req.params.status;
-    const expenses = await expenseService.getExpensesByStatus(status);
+    const { companyId } = req.query;
+    const expenses = await expenseService.getExpensesByStatus(status, companyId);
 
     res.status(200).json({
       success: true,
@@ -140,7 +145,8 @@ class ExpenseController {
   // Get expense summary
   getExpenseSummary = asyncHandler(async (req, res) => {
     const filters = req.query;
-    const summary = await expenseService.calculateExpenseSummary(filters);
+    const { companyId } = req.query;
+    const summary = await expenseService.calculateExpenseSummary(filters, companyId);
 
     res.status(200).json({
       success: true,
@@ -152,6 +158,7 @@ class ExpenseController {
   // Get total expenses in date range
   getTotalExpensesInRange = asyncHandler(async (req, res) => {
     const { startDate, endDate, currency } = req.query;
+    const { companyId } = req.query;
 
     if (!startDate || !endDate) {
       return res.status(400).json({
@@ -163,7 +170,8 @@ class ExpenseController {
     const result = await expenseService.getTotalExpensesInRange(
       new Date(startDate),
       new Date(endDate),
-      currency || 'AED'
+      currency || 'AED',
+      companyId
     );
 
     res.status(200).json({

@@ -183,6 +183,11 @@ const inventorySchema = new mongoose.Schema({
     lowercase: true
   }],
   
+  companyId: {
+    type: String,
+    trim: true,
+    index: true
+  },
   // Created by
   createdBy: {
     type: mongoose.Schema.Types.ObjectId,

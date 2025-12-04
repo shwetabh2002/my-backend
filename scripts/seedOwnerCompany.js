@@ -142,6 +142,7 @@ const seedOwnerCompany = async () => {
       },
       lastActivityDate: new Date(),
       companyCode: 'COMP-000001',
+      companyId: 'axeera',
       VAT: 0
     });
 

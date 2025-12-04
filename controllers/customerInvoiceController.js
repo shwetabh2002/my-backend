@@ -16,7 +16,8 @@ const getAllInvoices = async (req, res) => {
       sort: req.query.sort || '-createdAt'
     };
 
-    const result = await customerInvoiceService.getAllInvoices(filters, options, currentUser, isAdmin);
+    const { companyId } = req.query;
+    const result = await customerInvoiceService.getAllInvoices(filters, options, currentUser, isAdmin, companyId);
 
     res.status(200).json({
       success: true,
@@ -43,8 +44,9 @@ const createCustomerInvoice = async (req, res) => {
   try {
     const invoiceData = req.body;
     const createdBy = req.user.id;
+    const { companyId } = req.query;
 
-    const invoice = await customerInvoiceService.createCustomerInvoice(invoiceData, createdBy);
+    const invoice = await customerInvoiceService.createCustomerInvoice(invoiceData, createdBy, companyId);
 
     res.status(201).json({
       success: true,
@@ -68,7 +70,8 @@ const createCustomerInvoice = async (req, res) => {
 const getInvoiceById = async (req, res) => {
   try {
     const { id } = req.params;
-    const invoice = await customerInvoiceService.getInvoiceById(id);
+    const { companyId } = req.query;
+    const invoice = await customerInvoiceService.getInvoiceById(id, companyId);
 
     res.status(200).json({
       success: true,
@@ -92,12 +95,13 @@ const getInvoiceById = async (req, res) => {
 const getTotalSales = async (req, res) => {
   try {
     const filters = req.query;
+    const { companyId } = req.query;
     const options = {
       groupBy: req.query.groupBy || 'day',
       limit: parseInt(req.query.limit) || 30
     };
 
-    const salesData = await customerInvoiceService.getTotalSales(filters, options);
+    const salesData = await customerInvoiceService.getTotalSales(filters, options, companyId);
 
     res.status(200).json({
       success: true,

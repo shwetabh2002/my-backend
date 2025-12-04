@@ -1,6 +1,6 @@
 const User = require('../models/User');
 const Role = require('../models/Role');
-const { generateTokenPair } = require('../utils/jwt');
+const { generateTokenPair, verifyToken } = require('../utils/jwt');
 const { createError } = require('../utils/apiError');
 const crypto = require('crypto');
 
@@ -8,10 +8,11 @@ const crypto = require('crypto');
 
 class AuthService {
   // Login user
-  async login(email, password) {
+  async login(email, password, companyId) {
     try {
       // Find user with password selected
-      const user = await User.findOne({ email }).select('+password');
+      console.log(email, password, companyId);
+      const user = await User.findOne({ email , companyId }).select('+password');
       
       if (!user) {
         throw createError.unauthorized('Invalid email or password');
@@ -27,14 +28,28 @@ class AuthService {
         throw createError.forbidden('Account is not active');
       }
 
+      // Validate companyId - user must belong to the specified company
+      if (user.companyId && user.companyId !== companyId) {
+        throw createError.forbidden('User does not belong to the specified company');
+      }
+      
+      // If user doesn't have companyId set, set it now
+      if (!user.companyId && companyId) {
+        user.companyId = companyId;
+        await user.save();
+      }
+
       // Verify password
       const isPasswordValid = await user.comparePassword(password);
       if (!isPasswordValid) {
         throw createError.unauthorized('Invalid email or password');
       }
 
-      // Generate tokens
-      const tokens = generateTokenPair(user._id, user.type, user.roleIds);
+      // Use the user's companyId (either existing or newly set)
+      const userCompanyId = user.companyId || companyId;
+
+      // Generate tokens with companyId
+      const tokens = generateTokenPair(user._id, user.type, user.roleIds, userCompanyId);
 
       // Update user's refresh token and last login
       user.refreshToken = tokens.refreshToken;
@@ -65,10 +80,18 @@ class AuthService {
   }
 
   // Refresh access token
-  async refreshAccessToken(refreshToken) {
+  async refreshAccessToken(refreshToken, companyId) {
     try {
+      // Verify refresh token to get decoded info (including companyId from token)
+      let decoded;
+      try {
+        decoded = verifyToken(refreshToken);
+      } catch (error) {
+        throw createError.unauthorized('Invalid refresh token');
+      }
+
       // Find user with refresh token
-      const user = await User.findOne({ refreshToken }).select('+refreshToken');
+      const user = await User.findOne({ refreshToken, companyId }).select('+refreshToken');
       
       if (!user) {
         throw createError.unauthorized('Invalid refresh token');
@@ -79,15 +102,35 @@ class AuthService {
         throw createError.forbidden('Account is not active');
       }
 
-      // Generate new access token
-      const accessToken = generateTokenPair(user._id, user.type, user.roleIds).accessToken;
+      // Validate companyId - check if it matches token's companyId and user's companyId
+      const tokenCompanyId = decoded.companyId || null;
+      
+      if (companyId !== tokenCompanyId) {
+        throw createError.forbidden('CompanyId mismatch - token companyId does not match provided companyId');
+      }
+
+      if (user.companyId && user.companyId !== companyId) {
+        throw createError.forbidden('User does not belong to the specified company');
+      }
+
+      // Use the validated companyId
+      const validatedCompanyId = companyId || user.companyId || null;
+
+      // Generate new access token with companyId
+      const tokens = generateTokenPair(user._id, user.type, user.roleIds, validatedCompanyId);
+
+      // Update user's refresh token in database
+      user.refreshToken = tokens.refreshToken;
+      await user.save();
 
       // Get user roles with permissions
       const userRoles = await Role.find({ _id: { $in: user.roleIds } })
         .select('name permissions description');
 
       return { 
-        accessToken,
+        accessToken: tokens.accessToken,
+        refreshToken: tokens.refreshToken,
+        expiresIn: tokens.expiresIn,
         roles: userRoles,
         permissions: userRoles.flatMap(role => role.permissions)
       };
@@ -110,9 +153,9 @@ class AuthService {
   }
 
   // Validate user permissions
-  async validateUserPermissions(userId, requiredPermissions) {
+  async validateUserPermissions(userId, requiredPermissions, companyId) {
     try {
-      const user = await User.findById(userId).populate('roleIds', 'permissions');
+      const user = await User.findById({_id: userId, companyId: companyId}).populate('roleIds', 'permissions');
       
       if (!user) {
         throw createError.notFound('User not found');
@@ -139,9 +182,9 @@ class AuthService {
   }
 
   // Get user profile
-  async getUserProfile(userId) {
+  async getUserProfile(userId, companyId) {
     try {
-      const user = await User.findById(userId)
+      const user = await User.findById({_id: userId, companyId: companyId})
         .select('-password -refreshToken')
         .populate('roleIds', 'name permissions description');
 
@@ -164,9 +207,9 @@ class AuthService {
   }
 
   // Get user permissions summary
-  async getUserPermissions(userId) {
+  async getUserPermissions(userId, companyId) {
     try {
-      const user = await User.findById(userId)
+      const user = await User.findById({_id: userId, companyId: companyId})
         .select('roleIds type status')
         .populate('roleIds', 'name permissions description');
 
@@ -194,9 +237,9 @@ class AuthService {
   }
 
   // Change password
-  async changePassword(userId, currentPassword, newPassword) {
+  async changePassword(userId, currentPassword, newPassword, companyId) {
     try {
-      const user = await User.findById(userId).select('+password');
+      const user = await User.findById({_id: userId, companyId: companyId}).select('+password');
       
       if (!user) {
         throw createError.notFound('User not found');
@@ -219,9 +262,9 @@ class AuthService {
   }
 
   // Forgot password - Generate reset token
-  async forgotPassword(email) {
+  async forgotPassword(email, companyId) {
     try {
-      const user = await User.findOne({ email }).select('+resetPasswordToken +resetPasswordExpires');
+      const user = await User.findOne({ email, companyId }).select('+resetPasswordToken +resetPasswordExpires');
       
       if (!user) {
         // Don't reveal if user exists or not for security
@@ -259,7 +302,7 @@ class AuthService {
   }
 
   // Reset password with token
-  async resetPassword(token, newPassword) {
+  async resetPassword(token, newPassword, companyId) {
     try {
       // Hash the token to compare with stored hash
       const resetTokenHash = crypto.createHash('sha256').update(token).digest('hex');
@@ -268,7 +311,7 @@ class AuthService {
       const user = await User.findOne({
         resetPasswordToken: resetTokenHash,
         resetPasswordExpires: { $gt: Date.now() }
-      }).select('+resetPasswordToken +resetPasswordExpires');
+      , companyId}).select('+resetPasswordToken +resetPasswordExpires');
 
       if (!user) {
         throw createError.badRequest('Invalid or expired reset token');
@@ -287,16 +330,16 @@ class AuthService {
   }
 
   // Admin reset password (admin can reset any user's password)
-  async adminResetPassword(adminUserId, targetUserId, newPassword) {
+  async adminResetPassword(adminUserId, targetUserId, newPassword, companyId) {
     try {
       // Verify admin exists and is active
-      const admin = await User.findById(adminUserId);
+      const admin = await User.findById({_id: adminUserId, companyId: companyId});
       if (!admin || admin.type !== 'admin' || admin.status !== 'active') {
         throw createError.forbidden('Only active admins can reset passwords');
       }
 
       // Find target user
-      const targetUser = await User.findById(targetUserId);
+      const targetUser = await User.findById({_id: targetUserId, companyId: companyId});
       if (!targetUser) {
         throw createError.notFound('User not found');
       }

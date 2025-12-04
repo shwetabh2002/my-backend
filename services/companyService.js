@@ -63,7 +63,7 @@ class CompanyService {
    * @param {Object} options - Query options (page, limit, sort, etc.)
    * @returns {Promise<Object>} Paginated companies
    */
-  async getCompanies(filters = {}, options = {}) {
+  async getCompanies(filters = {}, options = {}, companyId = null) {
     try {
       const {
         page = 1,
@@ -82,6 +82,11 @@ class CompanyService {
 
       // Build query
       const query = {};
+      
+      // Filter by companyId if provided
+      if (companyId) {
+        query.companyId = companyId;
+      }
 
       if (status) query.status = status;
       if (industry) query.industry = new RegExp(industry, 'i');
@@ -146,9 +151,14 @@ class CompanyService {
    * @param {string} companyId - Company ID
    * @returns {Promise<Object>} Company details
    */
-  async getCompanyById(companyId) {
+  async getCompanyById(companyId, filterCompanyId = null) {
     try {
-      const company = await Company.findById(companyId)
+      const query = { _id: companyId };
+      if (filterCompanyId) {
+        query.companyId = filterCompanyId;
+      }
+      
+      const company = await Company.findOne(query)
         .populate('createdBy', 'name email')
         .populate('updatedBy', 'name email');
 
@@ -427,11 +437,23 @@ class CompanyService {
    * @param {Object} options - Search options
    * @returns {Promise<Array>} Search results
    */
-  async searchCompanies(searchTerm, options = {}) {
+  async searchCompanies(searchTerm, options = {}, companyId = null) {
     try {
       const { limit = 20 } = options;
+      const query = {
+        $or: [
+          { name: new RegExp(searchTerm, 'i') },
+          { legalName: new RegExp(searchTerm, 'i') },
+          { email: new RegExp(searchTerm, 'i') },
+          { companyCode: new RegExp(searchTerm, 'i') }
+        ]
+      };
+      
+      if (companyId) {
+        query.companyId = companyId;
+      }
 
-      const companies = await Company.searchCompanies(searchTerm)
+      const companies = await Company.find(query)
         .populate('createdBy', 'name email')
         .limit(parseInt(limit))
         .lean();
@@ -446,9 +468,46 @@ class CompanyService {
    * Get company statistics
    * @returns {Promise<Object>} Company statistics
    */
-  async getCompanyStats() {
+  async getCompanyStats(companyId = null) {
     try {
-      const stats = await Company.getCompanyStats();
+      const matchStage = {};
+      if (companyId) {
+        matchStage.companyId = companyId;
+      }
+      
+      const pipeline = [];
+      if (Object.keys(matchStage).length > 0) {
+        pipeline.push({ $match: matchStage });
+      }
+      pipeline.push({
+        $group: {
+          _id: null,
+          totalCompanies: { $sum: 1 },
+          activeCompanies: {
+            $sum: { $cond: [{ $eq: ['$status', 'active'] }, 1, 0] }
+          },
+          inactiveCompanies: {
+            $sum: { $cond: [{ $eq: ['$status', 'inactive'] }, 1, 0] }
+          },
+          suspendedCompanies: {
+            $sum: { $cond: [{ $eq: ['$status', 'suspended'] }, 1, 0] }
+          },
+          byIndustry: {
+            $push: {
+              industry: '$industry',
+              status: '$status'
+            }
+          },
+          byTier: {
+            $push: {
+              customerTier: '$customerTier',
+              status: '$status'
+            }
+          }
+        }
+      });
+      
+      const stats = await Company.aggregate(pipeline);
       
       if (stats.length === 0) {
         return {
@@ -502,11 +561,15 @@ class CompanyService {
    * @param {Object} options - Query options
    * @returns {Promise<Array>} Companies in industry
    */
-  async getCompaniesByIndustry(industry, options = {}) {
+  async getCompaniesByIndustry(industry, options = {}, companyId = null) {
     try {
       const { limit = 50 } = options;
+      const query = { industry: new RegExp(industry, 'i') };
+      if (companyId) {
+        query.companyId = companyId;
+      }
 
-      const companies = await Company.findByIndustry(industry)
+      const companies = await Company.find(query)
         .populate('createdBy', 'name email')
         .limit(parseInt(limit))
         .lean();
@@ -523,11 +586,15 @@ class CompanyService {
    * @param {Object} options - Query options
    * @returns {Promise<Array>} Companies with status
    */
-  async getCompaniesByStatus(status, options = {}) {
+  async getCompaniesByStatus(status, options = {}, companyId = null) {
     try {
       const { limit = 50 } = options;
+      const query = { status };
+      if (companyId) {
+        query.companyId = companyId;
+      }
 
-      const companies = await Company.findByStatus(status)
+      const companies = await Company.find(query)
         .populate('createdBy', 'name email')
         .limit(parseInt(limit))
         .lean();
@@ -571,9 +638,14 @@ class CompanyService {
    * @param {string} companyCode - Company code
    * @returns {Promise<Object>} Company details
    */
-  async getCompanyByCode(companyCode) {
+  async getCompanyByCode(companyCode, companyId = null) {
     try {
-      const company = await Company.findOne({ companyCode })
+      const query = { companyCode };
+      if (companyId) {
+        query.companyId = companyId;
+      }
+      
+      const company = await Company.findOne(query)
         .populate('createdBy', 'name email')
         .populate('updatedBy', 'name email');
 
@@ -591,15 +663,24 @@ class CompanyService {
    * Get the owner company (the company selling products)
    * @returns {Promise<Object>} Owner company details
    */
-  async getOwnerCompany() {
+  async getOwnerCompany(companyId = null) {
     try {
-      // Look for company with a special flag or specific company code
-      let company = await Company.findOne({ isOwner: true })
+      // Build query with companyId if provided
+      const query = {};
+      
+      if (companyId) {
+        query.companyId = companyId;
+      } else {
+        // Look for company with a special flag or specific company code
+        query.isOwner = true;
+      }
+      
+      let company = await Company.findOne(query)
         .populate('createdBy', 'name email')
         .populate('updatedBy', 'name email');
 
-      // If no owner company found, get the first company or create a default one
-      if (!company) {
+      // If no owner company found and companyId was not provided, get the first company
+      if (!company && !companyId) {
         company = await Company.findOne()
           .populate('createdBy', 'name email')
           .populate('updatedBy', 'name email');
@@ -655,9 +736,10 @@ class CompanyService {
    * Get company details for use in invoices, quotations, etc.
    * @returns {Promise<Object>} Simplified company details for business documents
    */
-  async getCompanyForDocuments() {
+  async getCompanyForDocuments(companyId = null) {
     try {
-      const company = await this.getOwnerCompany();
+      console.log('companyId-----in companyService', companyId);
+      const company = await this.getOwnerCompany(companyId);
       
       // Return only the fields needed for business documents
       return {
@@ -676,7 +758,8 @@ class CompanyService {
         paymentTerms: company.paymentTerms,
         socialMedia: company.socialMedia,
         termCondition:company.termCondition,
-        bankDetails:company.bankDetails
+        bankDetails:company.bankDetails,
+        companyId: company.companyId
       };
     } catch (error) {
       throw error;

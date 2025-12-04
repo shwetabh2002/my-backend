@@ -6,8 +6,17 @@ class AuthController {
   login = async (req, res) => {
     try {
       const { email, password } = req.body;
+      const { companyId } = req.query;
 
-      const result = await authService.login(email, password);
+      if (!companyId) {
+        return res.status(400).json({
+          success: false,
+          message: 'companyId is required in query parameters',
+          statusCode: 400
+        });
+      }
+
+      const result = await authService.login(email, password, companyId);
 
       res.status(200).json({
         success: true,
@@ -49,8 +58,17 @@ class AuthController {
       }
 
       const refreshToken = authHeader.substring(7); // Remove 'Bearer ' prefix
+      const { companyId } = req.query;
 
-      const result = await authService.refreshAccessToken(refreshToken);
+      if (!companyId) {
+        return res.status(400).json({
+          success: false,
+          message: 'companyId is required in query parameters',
+          statusCode: 400
+        });
+      }
+
+      const result = await authService.refreshAccessToken(refreshToken, companyId);
 
       res.status(200).json({
         success: true,

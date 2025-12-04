@@ -1,13 +1,19 @@
 const jwt = require('jsonwebtoken');
 
-const generateAccessToken = (userId, userType, roleIds) => {
+const generateAccessToken = (userId, userType, roleIds, companyId = null) => {
+  const payload = { 
+    userId, 
+    userType, 
+    roleIds,
+    type: 'access'
+  };
+  
+  if (companyId) {
+    payload.companyId = companyId;
+  }
+  
   return jwt.sign(
-    { 
-      userId, 
-      userType, 
-      roleIds,
-      type: 'access'
-    },
+    payload,
     process.env.JWT_SECRET,
     { 
       expiresIn: process.env.JWT_EXPIRES_IN || '24h' 
@@ -15,12 +21,18 @@ const generateAccessToken = (userId, userType, roleIds) => {
   );
 };
 
-const generateRefreshToken = (userId) => {
+const generateRefreshToken = (userId, companyId = null) => {
+  const payload = { 
+    userId, 
+    type: 'refresh'
+  };
+  
+  if (companyId) {
+    payload.companyId = companyId;
+  }
+  
   return jwt.sign(
-    { 
-      userId, 
-      type: 'refresh'
-    },
+    payload,
     process.env.JWT_SECRET,
     { 
       expiresIn: process.env.JWT_REFRESH_EXPIRES_IN || '7d' 
@@ -44,9 +56,9 @@ const decodeToken = (token) => {
   }
 };
 
-const generateTokenPair = (userId, userType, roleIds) => {
-  const accessToken = generateAccessToken(userId, userType, roleIds);
-  const refreshToken = generateRefreshToken(userId);
+const generateTokenPair = (userId, userType, roleIds, companyId = null) => {
+  const accessToken = generateAccessToken(userId, userType, roleIds, companyId);
+  const refreshToken = generateRefreshToken(userId, companyId);
   
   return {
     accessToken,

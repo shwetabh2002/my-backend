@@ -7,12 +7,17 @@ const Quotation = require('../models/quotation');
 
 class UserService {
   // Create new user
-  async createUser(userData) {
+  async createUser(userData, companyId = null) {
     try {
       // Validate that roles exist
       const roles = await Role.find({ _id: { $in: userData.roleIds } });
       if (roles.length !== userData.roleIds.length) {
         throw new Error('One or more roles not found');
+      }
+      
+      // Add companyId if provided
+      if (companyId) {
+        userData.companyId = companyId;
       }
 
       // Check if email already exists
@@ -37,12 +42,17 @@ class UserService {
   }
 
   // Get all users with pagination and filters
-  async getUsers(query, currentUser) {
+  async getUsers(query, currentUser, companyId = null) {
     try {
       const { page, limit, skip, sort } = getPaginationOptions(query);
       
       // Build filter object
       const filter = {};
+      
+      // Filter by companyId if provided
+      if (companyId) {
+        filter.companyId = companyId;
+      }
       
       if (query.type) filter.type = query.type;
       if (query.status) filter.status = query.status;
@@ -82,9 +92,14 @@ class UserService {
   }
 
   // Get user by ID
-  async getUserById(userId, currentUser) {
+  async getUserById(userId, currentUser, companyId = null) {
     try {
-      const user = await User.findById(userId)
+      const query = { _id: userId };
+      if (companyId) {
+        query.companyId = companyId;
+      }
+      
+      const user = await User.findOne(query)
         .select('-password -refreshToken')
         .populate('roleIds', 'name permissions description');
 
@@ -185,14 +200,19 @@ class UserService {
   }
 
   // Get users by role
-  async getUsersByRole(roleName) {
+  async getUsersByRole(roleName, companyId = null) {
     try {
       const role = await Role.findOne({ name: roleName.toUpperCase() });
       if (!role) {
         throw new Error('Role not found');
       }
 
-      const users = await User.find({ roleIds: role._id })
+      const query = { roleIds: role._id };
+      if (companyId) {
+        query.companyId = companyId;
+      }
+
+      const users = await User.find(query)
         .select('-password -refreshToken')
         .populate('roleIds', 'name');
 
@@ -227,27 +247,40 @@ class UserService {
   }
 
   // Get user statistics
-  async getUserStats(currentUser) {
+  async getUserStats(currentUser, companyId = null) {
     try {
       // Only admins can see statistics
       if (currentUser.type !== 'admin') {
         throw new Error('Insufficient permissions');
       }
 
-      const stats = await User.aggregate([
-        {
-          $group: {
-            _id: '$type',
-            count: { $sum: 1 },
-            activeCount: {
-              $sum: { $cond: [{ $eq: ['$status', 'active'] }, 1, 0] }
-            }
+      const matchStage = {};
+      if (companyId) {
+        matchStage.companyId = companyId;
+      }
+      
+      const pipeline = [];
+      if (Object.keys(matchStage).length > 0) {
+        pipeline.push({ $match: matchStage });
+      }
+      pipeline.push({
+        $group: {
+          _id: '$type',
+          count: { $sum: 1 },
+          activeCount: {
+            $sum: { $cond: [{ $eq: ['$status', 'active'] }, 1, 0] }
           }
         }
-      ]);
+      });
 
-      const totalUsers = await User.countDocuments();
-      const activeUsers = await User.countDocuments({ status: 'active' });
+      const stats = await User.aggregate(pipeline);
+      
+      const countQuery = {};
+      if (companyId) {
+        countQuery.companyId = companyId;
+      }
+      const totalUsers = await User.countDocuments(countQuery);
+      const activeUsers = await User.countDocuments({ ...countQuery, status: 'active' });
 
       return {
         totalUsers,
@@ -261,10 +294,16 @@ class UserService {
   }
 
   // Create customer
-  async createCustomer(userData, currentUser) {
+  async createCustomer(userData, currentUser, companyId = null) {
     try {
+      // Build query with companyId if provided
+      const emailPhoneQuery = { $or: [{ email: userData.email }, { phone: userData.phone }] };
+      if (companyId) {
+        emailPhoneQuery.companyId = companyId;
+      }
+      
       // Check if email already exists
-      const existingCustomer = await User.findOne({ $or: [{ email: userData.email }, { phone: userData.phone }] });
+      const existingCustomer = await User.findOne(emailPhoneQuery);
       if (existingCustomer) {
         throw createError.conflict('customer already exists');
       }
@@ -274,7 +313,8 @@ class UserService {
         ...userData,
         type: 'customer',
         status: 'active',
-        createdBy: currentUser?._id || null
+        createdBy: currentUser?._id || null,
+        ...(companyId && { companyId })
       };
 
       // Ensure no password is set for customers
@@ -313,11 +353,16 @@ class UserService {
       throw error;
     }
   }
-  async getCustomers(options = {},currentUser,isAdmin) {
+  async getCustomers(options = {}, currentUser, isAdmin, companyId = null) {
     try {
       const { page = 1, limit = 10, search, status } = options;
       // Build query
       const query = { type: 'customer' };
+      
+      // Filter by companyId if provided
+      if (companyId) {
+        query.companyId = companyId;
+      }
       
       // If user is not admin, filter by createdBy
       if (!isAdmin && currentUser && currentUser._id) {
@@ -373,8 +418,13 @@ class UserService {
       throw error;
     }
   }
-  async getCustomerById(customerId) {
-    const customer = await User.findOne({_id:customerId,type:'customer'});
+  async getCustomerById(customerId, companyId = null) {
+    const query = { _id: customerId, type: 'customer' };
+    if (companyId) {
+      query.companyId = companyId;
+    }
+    
+    const customer = await User.findOne(query);
     if (!customer) {
       return null;
     }
@@ -414,10 +464,16 @@ class UserService {
   }
 
   // Create supplier
-  async createSupplier(userData) {
+  async createSupplier(userData, companyId = null) {
     try {
+      // Build query with companyId if provided
+      const emailPhoneQuery = { $or: [{ email: userData.email }, { phone: userData.phone }] };
+      if (companyId) {
+        emailPhoneQuery.companyId = companyId;
+      }
+      
       // Check if email already exists
-      const existingSupplier = await User.findOne({ $or: [{ email: userData.email }, { phone: userData.phone }] });
+      const existingSupplier = await User.findOne(emailPhoneQuery);
       if (existingSupplier) {
         throw createError.conflict('Supplier with this email or phone already exists');
       }
@@ -426,7 +482,8 @@ class UserService {
       const supplierData = {
         ...userData,
         type: 'supplier',
-        status: 'active'
+        status: 'active',
+        ...(companyId && { companyId })
       };
 
       // Ensure no password is set for suppliers
@@ -478,12 +535,17 @@ class UserService {
   }
 
   // Get suppliers with pagination and filters
-  async getSuppliers(options = {}) {
+  async getSuppliers(options = {}, companyId = null) {
     try {
       const { page = 1, limit = 10, search, status } = options;
       
       // Build query
       const query = { type: 'supplier' };
+      
+      // Filter by companyId if provided
+      if (companyId) {
+        query.companyId = companyId;
+      }
       
       // Add status filter if provided
       if (status) {
@@ -537,9 +599,14 @@ class UserService {
   }
 
   // Get supplier by ID
-  async getSupplierById(supplierId) {
+  async getSupplierById(supplierId, companyId = null) {
     try {
-      const supplier = await User.findOne({_id: supplierId, type: 'supplier'});
+      const query = { _id: supplierId, type: 'supplier' };
+      if (companyId) {
+        query.companyId = companyId;
+      }
+      
+      const supplier = await User.findOne(query);
       if (!supplier) {
         return null;
       }
@@ -708,12 +775,18 @@ class UserService {
    * @param {string} currentUserId - Current user ID (admin)
    * @returns {Promise<Object>} Created employee
    */
-  async createEmployee(employeeData, currentUserId) {
+  async createEmployee(employeeData, currentUserId, companyId = null) {
     try {
       const { name, email, password, phone, roleType, address, status = 'active',countryCode } = employeeData;
 
+      // Build query with companyId if provided
+      const emailQuery = { email };
+      if (companyId) {
+        emailQuery.companyId = companyId;
+      }
+      
       // Check if email already exists
-      const existingUser = await User.findOne({ email });
+      const existingUser = await User.findOne(emailQuery);
       if (existingUser) {
         throw createError.conflict('Email already exists');
       }
@@ -738,7 +811,8 @@ class UserService {
         roleIds: [role._id],
         address: address || '',
         countryCode: countryCode || '+971', // Default country code
-        createdBy: currentUserId
+        createdBy: currentUserId,
+        ...(companyId && { companyId })
       });
 
       await employee.save();
@@ -772,7 +846,7 @@ class UserService {
    * @param {Object} query - Query parameters
    * @returns {Promise<Object>} Paginated employees
    */
-  async getEmployees(query = {}) {
+  async getEmployees(query = {}, companyId = null) {
     try {
       const { page = 1, limit = 10, search, status, roleType, sortBy = 'createdAt', sortOrder = 'desc' } = query;
 
@@ -781,6 +855,11 @@ class UserService {
         type: 'employee',
         roleIds: { $exists: true, $ne: [] }
       };
+      
+      // Filter by companyId if provided
+      if (companyId) {
+        filter.companyId = companyId;
+      }
 
       // Add search filter
       if (search) {
@@ -892,14 +971,19 @@ class UserService {
    * @param {string} employeeId - Employee ID
    * @returns {Promise<Object>} Employee data
    */
-  async getEmployeeById(employeeId) {
+  async getEmployeeById(employeeId, companyId = null) {
     try {
       if (!employeeId) {
         throw createError.badRequest('Employee ID is required');
       }
 
+      const query = { _id: employeeId, type: 'employee' };
+      if (companyId) {
+        query.companyId = companyId;
+      }
+
       // Find employee by ID
-      const employee = await User.findById(employeeId)
+      const employee = await User.findOne(query)
         .populate('roleIds', 'name permissions description')
         .lean();
 

@@ -5,7 +5,8 @@ class ReceiptController {
   // Get all receipts
   getAllReceipts = asyncHandler(async (req, res) => {
     const filters = req.query;
-    const result = await receiptService.getAllReceipts(filters);
+    const { companyId } = req.query;
+    const result = await receiptService.getAllReceipts(filters, companyId);
 
     res.status(200).json({
       success: true,
@@ -20,7 +21,8 @@ class ReceiptController {
   // Get receipt by ID
   getReceiptById = asyncHandler(async (req, res) => {
     const receiptId = req.params.id;
-    const receipt = await receiptService.getReceiptById(receiptId);
+    const { companyId } = req.query;
+    const receipt = await receiptService.getReceiptById(receiptId, companyId);
 
     res.status(200).json({
       success: true,
@@ -33,8 +35,9 @@ class ReceiptController {
   createReceipt = asyncHandler(async (req, res) => {
     const receiptData = req.body;
     const createdBy = req.user._id;
+    const { companyId } = req.query;
 
-    const receipt = await receiptService.createReceipt(receiptData, createdBy);
+    const receipt = await receiptService.createReceipt(receiptData, createdBy, false, companyId);
 
     res.status(201).json({
       success: true,
@@ -75,8 +78,9 @@ class ReceiptController {
   getReceiptsByCustomer = asyncHandler(async (req, res) => {
     const customerId = req.params.customerId;
     const filters = req.query;
+    const { companyId } = req.query;
 
-    const result = await receiptService.getReceiptsByCustomer(customerId, filters);
+    const result = await receiptService.getReceiptsByCustomer(customerId, filters, companyId);
 
     res.status(200).json({
       success: true,
@@ -91,8 +95,9 @@ class ReceiptController {
   getReceiptsByQuotation = asyncHandler(async (req, res) => {
     const quotationId = req.params.quotationId;
     const filters = req.query;
+    const { companyId } = req.query;
 
-    const result = await receiptService.getReceiptsByQuotation(quotationId, filters);
+    const result = await receiptService.getReceiptsByQuotation(quotationId, filters, companyId);
 
     res.status(200).json({
       success: true,
@@ -107,7 +112,8 @@ class ReceiptController {
   // Get receipt summary
   getReceiptSummary = asyncHandler(async (req, res) => {
     const filters = req.query;
-    const summary = await receiptService.getReceiptSummary(filters);
+    const { companyId } = req.query;
+    const summary = await receiptService.getReceiptSummary(filters, companyId);
 
     res.status(200).json({
       success: true,

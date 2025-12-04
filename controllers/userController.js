@@ -5,8 +5,9 @@ class UserController {
   // Create new user (admin only)
   createUser = asyncHandler(async (req, res) => {
     const userData = req.body;
+    const { companyId } = req.query;
 
-    const user = await userService.createUser(userData);
+    const user = await userService.createUser(userData, companyId);
 
     res.status(201).json({
       success: true,
@@ -19,8 +20,9 @@ class UserController {
   getUsers = asyncHandler(async (req, res) => {
     const query = req.query;
     const currentUser = req.user;
+    const { companyId } = req.query;
 
-    const result = await userService.getUsers(query, currentUser);
+    const result = await userService.getUsers(query, currentUser, companyId);
 
     res.status(200).json({
       success: true,
@@ -33,8 +35,9 @@ class UserController {
   getUserById = asyncHandler(async (req, res) => {
     const userId = req.params.id;
     const currentUser = req.user;
+    const { companyId } = req.query;
 
-    const user = await userService.getUserById(userId, currentUser);
+    const user = await userService.getUserById(userId, currentUser, companyId);
 
     res.status(200).json({
       success: true,
@@ -48,8 +51,9 @@ class UserController {
     const userId = req.params.id;
     const updateData = req.body;
     const currentUser = req.user;
+    const { companyId } = req.query;
 
-    const user = await userService.updateUser(userId, updateData, currentUser);
+    const user = await userService.updateUser(userId, updateData, currentUser, companyId);
 
     res.status(200).json({
       success: true,
@@ -75,8 +79,9 @@ class UserController {
   // Get users by role
   getUsersByRole = asyncHandler(async (req, res) => {
     const roleName = req.params.roleName;
+    const { companyId } = req.query;
 
-    const users = await userService.getUsersByRole(roleName);
+    const users = await userService.getUsersByRole(roleName, companyId);
 
     res.status(200).json({
       success: true,
@@ -103,8 +108,9 @@ class UserController {
   // Get user statistics (admin only)
   getUserStats = asyncHandler(async (req, res) => {
     const currentUser = req.user;
+    const { companyId } = req.query;
 
-    const stats = await userService.getUserStats(currentUser);
+    const stats = await userService.getUserStats(currentUser, companyId);
 
     res.status(200).json({
       success: true,
@@ -125,7 +131,8 @@ class UserController {
     if (status) query.status = status;
     if (roleId) query.roleId = roleId;
 
-    const result = await userService.getUsers(query, currentUser);
+    const { companyId } = req.query;
+    const result = await userService.getUsers(query, currentUser, companyId);
 
     res.status(200).json({
       success: true,
@@ -137,8 +144,9 @@ class UserController {
   createCustomer = asyncHandler(async (req, res) => {
     const userData = req.body;
     const currentUser = req.user;
+    const { companyId } = req.query;
 
-    const user = await userService.createCustomer(userData, currentUser);
+    const user = await userService.createCustomer(userData, currentUser, companyId);
 
     res.status(201).json({
       success: true,
@@ -193,7 +201,8 @@ class UserController {
         currentUser,
       };
       const isAdmin = currentUser?.type === 'admin';
-      const result = await userService.getCustomers(options,currentUser,isAdmin);
+      const { companyId } = req.query;
+      const result = await userService.getCustomers(options, currentUser, isAdmin, companyId);
       
       res.status(200).json({
         success: true,
@@ -213,7 +222,8 @@ class UserController {
   getCustomerById = async (req, res) => {
     try {
       const customerId = req.params.id;
-      const customer = await userService.getCustomerById(customerId);
+      const { companyId } = req.query;
+      const customer = await userService.getCustomerById(customerId, companyId);
       
       if (!customer) {
         return res.status(404).json({
@@ -257,8 +267,9 @@ class UserController {
   // Supplier CRUD methods
   createSupplier = asyncHandler(async (req, res) => {
     const userData = req.body;
+    const { companyId } = req.query;
 
-    const supplier = await userService.createSupplier(userData);
+    const supplier = await userService.createSupplier(userData, companyId);
 
     res.status(201).json({
       success: true,
@@ -278,7 +289,8 @@ class UserController {
         status
       };
       
-      const result = await userService.getSuppliers(options);
+      const { companyId } = req.query;
+      const result = await userService.getSuppliers(options, companyId);
       
       res.status(200).json({
         success: true,
@@ -309,7 +321,8 @@ class UserController {
   getSupplierById = async (req, res) => {
     try {
       const supplierId = req.params.id;
-      const supplier = await userService.getSupplierById(supplierId);
+      const { companyId } = req.query;
+      const supplier = await userService.getSupplierById(supplierId, companyId);
       
       if (!supplier) {
         return res.status(404).json({
@@ -399,8 +412,9 @@ class UserController {
   createEmployee = asyncHandler(async (req, res) => {
     const employeeData = req.body;
     const currentUser = req.user;
+    const { companyId } = req.query;
 
-    const result = await userService.createEmployee(employeeData, currentUser._id);
+    const result = await userService.createEmployee(employeeData, currentUser._id, companyId);
 
     res.status(201).json({
       success: true,
@@ -412,8 +426,9 @@ class UserController {
   // Get all employees (admin and employee access)
   getEmployees = asyncHandler(async (req, res) => {
     const query = req.query;
+    const { companyId } = req.query;
 
-    const result = await userService.getEmployees(query);
+    const result = await userService.getEmployees(query, companyId);
 
     res.status(200).json({
       success: true,
@@ -427,8 +442,9 @@ class UserController {
   // Get employee by ID (admin and employee access)
   getEmployeeById = asyncHandler(async (req, res) => {
     const employeeId = req.params.id;
+    const { companyId } = req.query;
 
-    const result = await userService.getEmployeeById(employeeId);
+    const result = await userService.getEmployeeById(employeeId, companyId);
 
     res.status(200).json({
       success: true,

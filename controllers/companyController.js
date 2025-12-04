@@ -34,6 +34,7 @@ const createCompany = async (req, res) => {
 const getCompanies = async (req, res) => {
   try {
     const filters = req.query;
+    const { companyId } = req.query;
     const options = {
       page: req.query.page || 1,
       limit: req.query.limit || 10,
@@ -49,7 +50,7 @@ const getCompanies = async (req, res) => {
       dateTo: req.query.dateTo
     };
 
-    const result = await companyService.getCompanies(filters, options);
+    const result = await companyService.getCompanies(filters, options, companyId);
 
     res.status(200).json({
       success: true,
@@ -74,7 +75,8 @@ const getCompanies = async (req, res) => {
 const getCompanyById = async (req, res) => {
   try {
     const { id } = req.params;
-    const company = await companyService.getCompanyById(id);
+    const { companyId } = req.query;
+    const company = await companyService.getCompanyById(id, companyId);
 
     res.status(200).json({
       success: true,
@@ -255,6 +257,7 @@ const removeContact = async (req, res) => {
 const searchCompanies = async (req, res) => {
   try {
     const { q } = req.query;
+    const { companyId } = req.query;
     const options = {
       limit: req.query.limit || 20
     };
@@ -266,7 +269,7 @@ const searchCompanies = async (req, res) => {
       });
     }
 
-    const companies = await companyService.searchCompanies(q, options);
+    const companies = await companyService.searchCompanies(q, options, companyId);
 
     res.status(200).json({
       success: true,
@@ -290,7 +293,8 @@ const searchCompanies = async (req, res) => {
  */
 const getCompanyStats = async (req, res) => {
   try {
-    const stats = await companyService.getCompanyStats();
+    const { companyId } = req.query;
+    const stats = await companyService.getCompanyStats(companyId);
 
     res.status(200).json({
       success: true,
@@ -314,11 +318,12 @@ const getCompanyStats = async (req, res) => {
 const getCompaniesByIndustry = async (req, res) => {
   try {
     const { industry } = req.params;
+    const { companyId } = req.query;
     const options = {
       limit: req.query.limit || 50
     };
 
-    const companies = await companyService.getCompaniesByIndustry(industry, options);
+    const companies = await companyService.getCompaniesByIndustry(industry, options, companyId);
 
     res.status(200).json({
       success: true,
@@ -343,11 +348,12 @@ const getCompaniesByIndustry = async (req, res) => {
 const getCompaniesByStatus = async (req, res) => {
   try {
     const { status } = req.params;
+    const { companyId } = req.query;
     const options = {
       limit: req.query.limit || 50
     };
 
-    const companies = await companyService.getCompaniesByStatus(status, options);
+    const companies = await companyService.getCompaniesByStatus(status, options, companyId);
 
     res.status(200).json({
       success: true,
@@ -408,7 +414,8 @@ const bulkUpdateCompanies = async (req, res) => {
 const getCompanyByCode = async (req, res) => {
   try {
     const { code } = req.params;
-    const company = await companyService.getCompanyByCode(code);
+    const { companyId } = req.query;
+    const company = await companyService.getCompanyByCode(code, companyId);
 
     res.status(200).json({
       success: true,
@@ -431,7 +438,8 @@ const getCompanyByCode = async (req, res) => {
  */
 const getOwnerCompany = async (req, res) => {
   try {
-    const company = await companyService.getOwnerCompany();
+    const { companyId } = req.query;
+    const company = await companyService.getOwnerCompany(companyId);
 
     res.status(200).json({
       success: true,
@@ -480,7 +488,8 @@ const setOwnerCompany = async (req, res) => {
  */
 const getCompanyForDocuments = async (req, res) => {
   try {
-    const company = await companyService.getCompanyForDocuments();
+    const { companyId } = req.query;
+    const company = await companyService.getCompanyForDocuments(companyId);
 
     res.status(200).json({
       success: true,

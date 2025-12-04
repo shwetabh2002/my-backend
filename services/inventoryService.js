@@ -6,14 +6,18 @@ const currencyService = require('./currencyService');
 
 class InventoryService {
   // Create new inventory item
-  async createInventory(inventoryData, currentUser) {
+  async createInventory(inventoryData, currentUser, companyId = null) {
     try {
       // Auto-generate SKU if not provided
       if (!inventoryData.sku) {
         inventoryData.sku = await this.generateSKU(inventoryData);
       } else {
-        // Check if provided SKU already exists
-        const existingItem = await Inventory.findOne({ sku: inventoryData.sku });
+        // Check if provided SKU already exists (within same company if companyId provided)
+        const skuQuery = { sku: inventoryData.sku };
+        if (companyId) {
+          skuQuery.companyId = companyId;
+        }
+        const existingItem = await Inventory.findOne(skuQuery);
         if (existingItem) {
           throw createError.conflict('SKU already exists');
         }
@@ -22,9 +26,12 @@ class InventoryService {
       // Auto-generate tags from name and description
       inventoryData.tags = this.generateTags(inventoryData);
 
-      // Set audit fields
+      // Set audit fields and companyId
       inventoryData.createdBy = currentUser._id;
       inventoryData.updatedBy = currentUser._id;
+      if (companyId) {
+        inventoryData.companyId = companyId;
+      }
 
       // Create inventory item
       const inventory = await Inventory.create(inventoryData);
@@ -91,7 +98,7 @@ class InventoryService {
   }
 
   // Bulk create inventory items
-  async bulkCreateInventory(itemsData, currentUser) {
+  async bulkCreateInventory(itemsData, currentUser, companyId = null) {
     try {
       const results = {
         success: [],
@@ -107,8 +114,12 @@ class InventoryService {
           if (!itemData.sku) {
             itemData.sku = await this.generateSKU(itemData);
           } else {
-            // Check if provided SKU already exists
-            const existingItem = await Inventory.findOne({ sku: itemData.sku });
+            // Check if provided SKU already exists (within same company if companyId provided)
+            const skuQuery = { sku: itemData.sku };
+            if (companyId) {
+              skuQuery.companyId = companyId;
+            }
+            const existingItem = await Inventory.findOne(skuQuery);
             if (existingItem) {
               throw createError.conflict(`SKU ${itemData.sku} already exists`);
             }
@@ -117,9 +128,12 @@ class InventoryService {
           // Auto-generate tags from name and description
           itemData.tags = this.generateTags(itemData);
 
-          // Set audit fields
+          // Set audit fields and companyId
           itemData.createdBy = currentUser._id;
           itemData.updatedBy = currentUser._id;
+          if (companyId) {
+            itemData.companyId = companyId;
+          }
 
           // Create inventory item
           const inventory = await Inventory.create(itemData);
@@ -204,12 +218,17 @@ class InventoryService {
   }
 
   // Get all inventory items with pagination and filters
-  async getInventoryItems(filters = {}, paginationOptions = {}) {
+  async getInventoryItems(filters = {}, paginationOptions = {}, companyId = null) {
     try {
       const { page, limit, sortBy, sortOrder } = getPaginationOptions(paginationOptions);
       
       // Build filter query
       const query = {};
+      
+      // Filter by companyId if provided
+      if (companyId) {
+        query.companyId = companyId;
+      }
       
       if (filters.type) query.type = filters.type;
       if (filters.category) query.category = filters.category;
@@ -274,9 +293,14 @@ class InventoryService {
   }
 
   // Get inventory item by ID
-  async getInventoryItemById(itemId) {
+  async getInventoryItemById(itemId, companyId = null) {
     try {
-      const item = await Inventory.findById(itemId)
+      const query = { _id: itemId };
+      if (companyId) {
+        query.companyId = companyId;
+      }
+      
+      const item = await Inventory.findOne(query)
         .populate('createdBy', 'name email')
         .populate('updatedBy', 'name email')
         .populate('supplierId', 'name email custId')
@@ -369,7 +393,7 @@ class InventoryService {
   }
 
   // Update inventory item
-  async updateInventoryItem(itemId, updateData, currentUser) {
+  async updateInventoryItem(itemId, updateData, currentUser, companyId = null) {
     try {
       // Check if item exists
       const existingItem = await Inventory.findById(itemId);
@@ -377,15 +401,24 @@ class InventoryService {
         throw createError.notFound('Inventory item not found');
       }
 
-      // Check if SKU is being updated and if it already exists
+      // Check if SKU is being updated and if it already exists (within same company if companyId provided)
       if (updateData.sku && updateData.sku !== existingItem.sku) {
-        const skuExists = await Inventory.findOne({ 
+        const skuQuery = { 
           sku: updateData.sku, 
           _id: { $ne: itemId } 
-        });
+        };
+        if (companyId) {
+          skuQuery.companyId = companyId;
+        }
+        const skuExists = await Inventory.findOne(skuQuery);
         if (skuExists) {
           throw createError.conflict('SKU already exists');
         }
+      }
+
+      // Add companyId if provided
+      if (companyId) {
+        updateData.companyId = companyId;
       }
 
       // Set audit fields
@@ -491,11 +524,20 @@ class InventoryService {
   }
 
   // Get inventory statistics
-  async getInventoryStats(currentUser) {
+  async getInventoryStats(currentUser, companyId = null) {
     try {
-      const stats = await Inventory.aggregate([
-        {
-          $group: {
+      const matchStage = {};
+      if (companyId) {
+        matchStage.companyId = companyId;
+      }
+      
+      const pipeline = [];
+      if (Object.keys(matchStage).length > 0) {
+        pipeline.push({ $match: matchStage });
+      }
+      
+      pipeline.push({
+        $group: {
             _id: null,
             totalItems: { $sum: 1 },
             totalValue: { $sum: { $multiply: ['$sellingPrice', '$quantity'] } },
@@ -515,31 +557,41 @@ class InventoryService {
               }
             }
           }
-        }
-      ]);
+        });
+      
+      const stats = await Inventory.aggregate(pipeline);
 
       // Get category breakdown
-      const categoryStats = await Inventory.aggregate([
-        {
-          $group: {
-            _id: '$category',
-            count: { $sum: 1 },
-            totalValue: { $sum: { $multiply: ['$sellingPrice', '$quantity'] } }
-          }
-        },
-        { $sort: { count: -1 } }
-      ]);
+      const categoryPipeline = [];
+      if (Object.keys(matchStage).length > 0) {
+        categoryPipeline.push({ $match: matchStage });
+      }
+      categoryPipeline.push({
+        $group: {
+          _id: '$category',
+          count: { $sum: 1 },
+          totalValue: { $sum: { $multiply: ['$sellingPrice', '$quantity'] } }
+        }
+      });
+      categoryPipeline.push({ $sort: { count: -1 } });
+      
+      const categoryStats = await Inventory.aggregate(categoryPipeline);
 
       // Get type breakdown
-      const typeStats = await Inventory.aggregate([
-        {
-          $group: {
-            _id: '$type',
-            count: { $sum: 1 },
-            totalValue: { $sum: { $multiply: ['$sellingPrice', '$quantity'] } }
-          }
+      const typePipeline = [];
+      if (Object.keys(matchStage).length > 0) {
+        typePipeline.push({ $match: matchStage });
+      }
+      typePipeline.push({
+        $group: {
+          _id: '$type',
+          count: { $sum: 1 },
+          totalValue: { $sum: { $multiply: ['$sellingPrice', '$quantity'] } }
         }
-      ]);
+      });
+      typePipeline.push({ $sort: { count: -1 } });
+      
+      const typeStats = await Inventory.aggregate(typePipeline);
 
       return {
         overview: stats[0] || {
@@ -558,9 +610,9 @@ class InventoryService {
   }
 
   // Search inventory items
-  async searchInventory(query, limit = 10) {
+  async searchInventory(query, limit = 10, companyId = null) {
     try {
-      const items = await Inventory.find({
+      const searchQuery = {
         $or: [
           { name: { $regex: query, $options: 'i' } },
           { description: { $regex: query, $options: 'i' } },
@@ -568,7 +620,13 @@ class InventoryService {
           { brand: { $regex: query, $options: 'i' } },
           { category: { $regex: query, $options: 'i' } }
         ]
-      })
+      };
+      
+      if (companyId) {
+        searchQuery.companyId = companyId;
+      }
+      
+      const items = await Inventory.find(searchQuery)
       .select('name sku brand category quantity sellingPrice images')
       .limit(limit)
       .sort({ quantity: -1 }); // Prioritize items with stock
@@ -580,11 +638,17 @@ class InventoryService {
   }
 
   // Get low stock alerts
-  async getLowStockAlerts(threshold = 10) {
+  async getLowStockAlerts(threshold = 10, companyId = null) {
     try {
-      const lowStockItems = await Inventory.find({
+      const query = {
         quantity: { $gt: 0, $lte: threshold }
-      })
+      };
+      
+      if (companyId) {
+        query.companyId = companyId;
+      }
+      
+      const lowStockItems = await Inventory.find(query)
       .select('name sku category quantity sellingPrice location')
       .sort({ quantity: 1 });
 
@@ -594,7 +658,7 @@ class InventoryService {
     }
   }
 
-  async getInventorycategory(filters, currencyType = 'USD', options = {}) {
+  async getInventorycategory(filters, currencyType = 'USD', options = {}, companyId = null) {
     try {
       
       // Pagination options
@@ -603,6 +667,10 @@ class InventoryService {
       
       // Build the query based on filters
       const query = {};
+      
+      if (companyId) {
+        query.companyId = companyId;
+      }
       
       if (filters.category) query.category = filters.category;
       if (filters.brand) query.brand = filters.brand;
@@ -701,7 +769,7 @@ class InventoryService {
    * @param {Object} options - Pagination and sorting options
    * @returns {Promise<Object>} Paginated inventory results
    */
-  async getInventory(filters = {}, options = {}) {
+  async getInventory(filters = {}, options = {}, companyId = null) {
     try {
       const {
         search,
@@ -732,6 +800,11 @@ class InventoryService {
 
       // Build query
       const query = {};
+
+      // Filter by companyId if provided
+      if (companyId) {
+        query.companyId = companyId;
+      }
 
       // Search functionality
       if (search) {

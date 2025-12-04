@@ -92,6 +92,14 @@ const companySchema = new mongoose.Schema({
     maxlength: 20,
     index: true
   },
+  companyId: {
+    type: String,
+    unique: true,
+    sparse: true,
+    trim: true,
+    maxlength: 50,
+    index: true
+  },
   
   // Business Information
   industry: {

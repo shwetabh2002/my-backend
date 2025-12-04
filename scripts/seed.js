@@ -201,7 +201,8 @@ const seedAdminUser = async (adminRole, employeeRole, financeRole) => {
       status: 'active',
       roleIds: [adminRole._id],
       address: '123 Main St, Anytown, USA',
-      phone: '+1-555-0000'
+      phone: '+1-555-0000',
+      companyId: 'axeera'
     });
     // Check if sales user already exists
     const existingSales = await User.findOne({ email: 'sales@example.com' });
@@ -215,7 +216,8 @@ const seedAdminUser = async (adminRole, employeeRole, financeRole) => {
         status: 'active',
         roleIds: [employeeRole._id],
         address: '123 Main St, Anytown, USA',
-        phone: '+1-555-0000'
+        phone: '+1-555-0000',
+        companyId: 'axeera'
       });
       await salesUser.save();
       console.log('Sales user created successfully');
@@ -235,7 +237,8 @@ const seedAdminUser = async (adminRole, employeeRole, financeRole) => {
         status: 'active',
         roleIds: [financeRole._id],
         address: '123 Main St, Anytown, USA',
-        phone: '+1-555-0000'
+        phone: '+1-555-0000',
+        companyId: 'axeera'
       });
       await financeUser.save();
       console.log('Finance user created successfully');
@@ -273,7 +276,8 @@ const seedSampleUsers = async (employeeRole, financeRole, customerRole, supplier
       status: 'active',
       roleIds: [supplierRole._id],
       address: 'Dubai Industrial City, UAE',
-      createdBy: adminUser?._id || null
+      createdBy: adminUser?._id || null,
+      companyId: 'axeera'
     });
 
     await supplierUser.save();

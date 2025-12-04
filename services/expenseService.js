@@ -8,7 +8,7 @@ class ExpenseService {
    * @param {Object} options - Query options (page, limit, sort, etc.)
    * @returns {Promise<Object>} Paginated expenses
    */
-  async getAllExpenses(filters = {}, options = {}) {
+  async getAllExpenses(filters = {}, options = {}, companyId = null) {
     try {
       const {
         page = 1,
@@ -28,6 +28,11 @@ class ExpenseService {
 
       // Build query
       const query = {};
+
+      // Filter by companyId if provided
+      if (companyId) {
+        query.companyId = companyId;
+      }
 
       if (category) query.category = category;
       if (status) query.status = status;
@@ -100,9 +105,14 @@ class ExpenseService {
    * @param {string} expenseId - Expense ID
    * @returns {Promise<Object>} Expense details
    */
-  async getExpenseById(expenseId) {
+  async getExpenseById(expenseId, companyId = null) {
     try {
-      const expense = await Expense.findById(expenseId)
+      const query = { _id: expenseId };
+      if (companyId) {
+        query.companyId = companyId;
+      }
+      
+      const expense = await Expense.findOne(query)
         .populate('createdBy', 'name email')
         .populate('updatedBy', 'name email')
         .populate('approvedBy', 'name email');
@@ -126,11 +136,12 @@ class ExpenseService {
    * @param {string} createdBy - User ID who created the expense
    * @returns {Promise<Object>} Created expense
    */
-  async createExpense(expenseData, createdBy) {
+  async createExpense(expenseData, createdBy, companyId = null) {
     try {
       const expense = new Expense({
         ...expenseData,
-        createdBy
+        createdBy,
+        ...(companyId && { companyId })
       });
 
       await expense.save();
@@ -334,10 +345,16 @@ class ExpenseService {
    * @param {Object} query - Query filters
    * @returns {Promise<Object>} Summary statistics
    */
-  async calculateExpenseSummary(query = {}) {
+  async calculateExpenseSummary(query = {}, companyId = null) {
     try {
+      // Build query with companyId filter
+      const finalQuery = { ...query };
+      if (companyId) {
+        finalQuery.companyId = companyId;
+      }
+      
       // Get all expenses with minimal data - much faster than aggregation
-      const expenses = await Expense.find(query)
+      const expenses = await Expense.find(finalQuery)
         .select('amount status category')
         .lean();
 
@@ -402,9 +419,13 @@ class ExpenseService {
    * @param {string} category - Expense category
    * @returns {Promise<Array>} Expenses in category
    */
-  async getExpensesByCategory(category) {
+  async getExpensesByCategory(category, companyId = null) {
     try {
-      return await Expense.getByCategory(category);
+      const query = { category };
+      if (companyId) {
+        query.companyId = companyId;
+      }
+      return await Expense.find(query).populate('createdBy', 'name email');
     } catch (error) {
       throw error;
     }
@@ -415,9 +436,13 @@ class ExpenseService {
    * @param {string} status - Expense status
    * @returns {Promise<Array>} Expenses with status
    */
-  async getExpensesByStatus(status) {
+  async getExpensesByStatus(status, companyId = null) {
     try {
-      return await Expense.getByStatus(status);
+      const query = { status };
+      if (companyId) {
+        query.companyId = companyId;
+      }
+      return await Expense.find(query).populate('createdBy', 'name email');
     } catch (error) {
       throw error;
     }
@@ -430,10 +455,19 @@ class ExpenseService {
    * @param {string} currency - Currency filter
    * @returns {Promise<Object>} Total expenses
    */
-  async getTotalExpensesInRange(startDate, endDate, currency = 'AED') {
+  async getTotalExpensesInRange(startDate, endDate, currency = 'AED', companyId = null) {
     try {
-      const result = await Expense.getTotalInRange(startDate, endDate, currency);
-      return result.length > 0 ? result[0] : { totalAmount: 0, count: 0 };
+      const query = {
+        createdAt: { $gte: startDate, $lte: endDate },
+        currency: currency.toUpperCase()
+      };
+      if (companyId) {
+        query.companyId = companyId;
+      }
+      
+      const expenses = await Expense.find(query).select('amount').lean();
+      const totalAmount = expenses.reduce((sum, exp) => sum + (exp.amount || 0), 0);
+      return { totalAmount, count: expenses.length };
     } catch (error) {
       throw error;
     }

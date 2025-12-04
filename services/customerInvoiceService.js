@@ -15,7 +15,7 @@ class CustomerInvoiceService {
    * @param {Object} options - Query options (page, limit, sort, etc.)
    * @returns {Promise<Object>} Paginated invoices
    */
-  async getAllInvoices(filters = {}, options = {}, currentUser, isAdmin) {
+  async getAllInvoices(filters = {}, options = {}, currentUser, isAdmin, companyId = null) {
     try {
       const {
         page = 1,
@@ -34,6 +34,11 @@ class CustomerInvoiceService {
 
       // Build query
       const query = {};
+
+      // Filter by companyId if provided
+      if (companyId) {
+        query.companyId = companyId;
+      }
 
       // If user is not admin, filter by quotation's createdBy (stored in quotationCreatedBy field)
       if (!isAdmin && currentUser && currentUser._id) {
@@ -206,7 +211,7 @@ class CustomerInvoiceService {
    * @param {string} createdBy - User ID who created the invoice
    * @returns {Promise<Object>} Created invoice
    */
-  async createCustomerInvoice(invoiceData, createdBy) {
+  async createCustomerInvoice(invoiceData, createdBy, companyId = null) {
     try {
       // Validate quotation exists and is approved
       const quotation = await Quotation.findById(invoiceData.quotationId);
@@ -307,6 +312,11 @@ class CustomerInvoiceService {
         invoicePayload.status = 'draft';
       }
 
+      // Add companyId if provided
+      if (companyId) {
+        invoicePayload.companyId = companyId;
+      }
+
       // Debug: Log the payload before creating invoice
       console.log('Invoice payload:', JSON.stringify(invoicePayload, null, 2));
 
@@ -366,9 +376,14 @@ class CustomerInvoiceService {
    * @param {string} invoiceId - Invoice ID
    * @returns {Promise<Object>} Invoice details with company information
    */
-  async getInvoiceById(invoiceId) {
+  async getInvoiceById(invoiceId, companyId = null) {
     try {
-      const invoice = await CustomerInvoice.findById(invoiceId)
+      const query = { _id: invoiceId };
+      if (companyId) {
+        query.companyId = companyId;
+      }
+      
+      const invoice = await CustomerInvoice.findOne(query)
         .populate('createdBy', 'name email')
         .populate('updatedBy', 'name email')
         .populate('customer.userId', 'name email trn')
@@ -945,7 +960,7 @@ class CustomerInvoiceService {
    * @param {Object} options - Query options (dateFrom, dateTo, groupBy, etc.)
    * @returns {Promise<Object>} Sales analytics data
    */
-  async getTotalSales(filters = {}, options = {}) {
+  async getTotalSales(filters = {}, options = {}, companyId = null) {
     try {
       const {
         dateFrom,
@@ -964,6 +979,11 @@ class CustomerInvoiceService {
 
       // Build base query
       const baseQuery = {};
+      
+      // Filter by companyId if provided
+      if (companyId) {
+        baseQuery.companyId = companyId;
+      }
       
       if (status) baseQuery.status = status;
       if (customerId) baseQuery['customer.custId'] = customerId;

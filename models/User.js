@@ -98,6 +98,11 @@ const userSchema = new mongoose.Schema({
     type: Date,
     select: false
   },
+  companyId: {
+    type: String,
+    trim: true,
+    index: true
+  },
   createdBy: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',

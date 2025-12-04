@@ -13,7 +13,7 @@ class QuotationService {
    * @param {string} createdBy - User ID who created the quotation
    * @returns {Promise<Object>} Created quotation
    */
-  async createQuotation(quotationData, createdBy) {
+  async createQuotation(quotationData, createdBy, companyId = null) {
     try {
       console.log('Creating quotation for customer:', quotationData.custId);
       
@@ -38,7 +38,10 @@ class QuotationService {
         date: new Date()
       }];
       const validTill = new Date(Date.now() + 3 * 24 * 60 * 60 * 1000); //3 days from now
-  const quotationTotal = await Quotation.countDocuments() || 0;
+      
+      // Count quotations with companyId filter if provided
+      const countQuery = companyId ? { companyId } : {};
+      const quotationTotal = await Quotation.countDocuments(countQuery) || 0;
   const year = new Date().getFullYear();
   const newNumber = quotationTotal + 1 ;
 
@@ -196,6 +199,7 @@ quotationData.deliveryAddress = customer.address
         updatedBy: createdBy,
         quotationNumber: quotationNumber,
         quotationId: quotationId,
+        ...(companyId && { companyId }) // Add companyId if provided
       });
       
       
@@ -232,7 +236,7 @@ quotationData.deliveryAddress = customer.address
                   description: description || `Booking payment for quotation ${quotation.quotationNumber}`, // Use provided description or default
                 };
                const isFromOrder = true;
-                const receipt = await receiptService.createReceipt(receiptData, createdBy,isFromOrder);
+                const receipt = await receiptService.createReceipt(receiptData, createdBy,isFromOrder, companyId);
                 console.log('Automatic receipt created successfully:', receipt.receiptNumber);
                 
                 // Add receipt information to quotation response
@@ -308,7 +312,7 @@ quotationData.deliveryAddress = customer.address
    * @param {Object} options - Query options (page, limit, sort, etc.)
    * @returns {Promise<Object>} Paginated quotations
    */
-  async getQuotations(filters , options, currentUser, isAdmin ) {
+  async getQuotations(filters , options, currentUser, isAdmin, companyId = null) {
     try {
       const {
         page = 1,
@@ -327,6 +331,11 @@ quotationData.deliveryAddress = customer.address
 
       // Build query
       const query = {};
+
+      // Filter by companyId if provided
+      if (companyId) {
+        query.companyId = companyId;
+      }
 
       // If user is not admin, filter by createdBy
       if (!isAdmin && currentUser && currentUser._id) {
@@ -496,7 +505,7 @@ quotationData.deliveryAddress = customer.address
       throw createError.internal('Failed to fetch quotations');
     }
   }
-  async getApprovedQuotations(filters , options ) {
+  async getApprovedQuotations(filters , options, companyId = null) {
     try {
       const {
         page = 1,
@@ -515,6 +524,11 @@ quotationData.deliveryAddress = customer.address
 
       // Build query - ALWAYS filter by approved status
       const query = { status: 'approved' };
+      
+      // Filter by companyId if provided
+      if (companyId) {
+        query.companyId = companyId;
+      }
 
       if (customerId) query['customer.custId'] = customerId;
       if (createdBy) query.createdBy = createdBy;
@@ -682,7 +696,7 @@ quotationData.deliveryAddress = customer.address
    * @param {Object} options - Query options
    * @returns {Promise<Object>} Paginated quotations
    */
-  async getReviewQuotations(filters = {}, options = {}) {
+  async getReviewQuotations(filters = {}, options = {}, companyId = null) {
     try {
       const {
         page = 1,
@@ -701,6 +715,11 @@ quotationData.deliveryAddress = customer.address
 
       // Build query - Default to review, approved, confirmed statuses
       const query = {};
+      
+      // Filter by companyId if provided
+      if (companyId) {
+        query.companyId = companyId;
+      }
 
       // Status filter - if provided, use it; otherwise default to review, approved, confirmed
       if (status) {
@@ -927,9 +946,14 @@ quotationData.deliveryAddress = customer.address
    * @param {string} quotationId - Quotation ID
    * @returns {Promise<Object>} Quotation details
    */
-  async getQuotationById(quotationId) {
+  async getQuotationById(quotationId, companyId = null) {
     try {
-      const quotation = await Quotation.findById(quotationId)
+      const query = { _id: quotationId };
+      if (companyId) {
+        query.companyId = companyId;
+      }
+      
+      const quotation = await Quotation.findOne(query)
         .populate('createdBy', 'name email')
         .populate('updatedBy', 'name email')
         .populate('customer.userId', 'name email trn countryCode')
@@ -1041,9 +1065,14 @@ quotationData.deliveryAddress = customer.address
    * @param {string} quotationNumber - Quotation number
    * @returns {Promise<Object>} Quotation details
    */
-  async getQuotationByNumber(quotationNumber) {
+  async getQuotationByNumber(quotationNumber, companyId = null) {
     try {
-      const quotation = await Quotation.findOne({ quotationNumber })
+      const query = { quotationNumber };
+      if (companyId) {
+        query.companyId = companyId;
+      }
+      
+      const quotation = await Quotation.findOne(query)
         .populate('createdBy', 'name email')
         .populate('updatedBy', 'name email')
         .populate('customer.userId', 'name email trn')
@@ -1074,8 +1103,13 @@ quotationData.deliveryAddress = customer.address
    * @param {string} updatedBy - User ID who updated the quotation
    * @returns {Promise<Object>} Updated quotation
    */
-  async updateQuotation(quotationId, updateData, updatedBy) {
+  async updateQuotation(quotationId, updateData, updatedBy, companyId = null) {
     try {
+      // Add companyId if provided
+      if (companyId) {
+        updateData.companyId = companyId;
+      }
+      
       // Validate inventory items if being updated
       if (updateData.items && updateData.items.length > 0) {
         const inventoryIds = updateData.items.map(item => item.itemId);
@@ -1384,11 +1418,15 @@ quotationData.deliveryAddress = customer.address
    * @param {Object} options - Query options
    * @returns {Promise<Array>} Customer quotations
    */
-  async getQuotationsByCustomer(customerId, options = {}) {
+  async getQuotationsByCustomer(customerId, options = {}, companyId = null) {
     try {
       const { limit = 50 } = options;
+      const query = { 'customer.custId': customerId };
+      if (companyId) {
+        query.companyId = companyId;
+      }
 
-      const quotations = await Quotation.findByCustomer(customerId)
+      const quotations = await Quotation.find(query)
         .populate('createdBy', 'name email')
         .populate({
           path: 'items.itemId',
@@ -1414,11 +1452,15 @@ quotationData.deliveryAddress = customer.address
    * @param {Object} options - Query options
    * @returns {Promise<Array>} Quotations with status
    */
-  async getQuotationsByStatus(status, options = {}) {
+  async getQuotationsByStatus(status, options = {}, companyId = null) {
     try {
       const { limit = 50 } = options;
+      const query = { status };
+      if (companyId) {
+        query.companyId = companyId;
+      }
 
-      const quotations = await Quotation.findByStatus(status)
+      const quotations = await Quotation.find(query)
         .populate('createdBy', 'name email')
         .populate('customer.userId', 'name email')
         .populate({
@@ -1443,9 +1485,14 @@ quotationData.deliveryAddress = customer.address
    * Get expired quotations
    * @returns {Promise<Array>} Expired quotations
    */
-  async getExpiredQuotations() {
+  async getExpiredQuotations(companyId = null) {
     try {
-      const quotations = await Quotation.findExpired()
+      const query = { validTill: { $lt: new Date() }, status: { $ne: 'expired' } };
+      if (companyId) {
+        query.companyId = companyId;
+      }
+      
+      const quotations = await Quotation.find(query)
         .populate('createdBy', 'name email')
         .populate('customer.userId', 'name email')
         .sort('-validTill')
@@ -1461,9 +1508,21 @@ quotationData.deliveryAddress = customer.address
    * @param {number} days - Days ahead to check (default: 3)
    * @returns {Promise<Array>} Quotations expiring soon
    */
-  async getQuotationsExpiringSoon(days = 3) {
+  async getQuotationsExpiringSoon(days = 3, companyId = null) {
     try {
-      const quotations = await Quotation.findExpiringSoon(days)
+      const today = new Date();
+      const futureDate = new Date();
+      futureDate.setDate(today.getDate() + days);
+      
+      const query = {
+        validTill: { $gte: today, $lte: futureDate },
+        status: { $nin: ['expired', 'accepted', 'rejected', 'converted'] }
+      };
+      if (companyId) {
+        query.companyId = companyId;
+      }
+      
+      const quotations = await Quotation.find(query)
         .populate('createdBy', 'name email')
         .populate('customer.userId', 'name email')
         .sort('validTill')
@@ -1480,10 +1539,10 @@ quotationData.deliveryAddress = customer.address
    * @param {Object} options - Query options
    * @returns {Promise<Object>} Paginated quotations
    */
-  async getApprovedOrders(filters = {}, options = {}) {
+  async getApprovedOrders(filters = {}, options = {}, companyId = null) {
     try {
 
-      return await this.getApprovedQuotations(filters, options);
+      return await this.getApprovedQuotations(filters, options, companyId);
     } catch (error) {
       console.error('Error getting approved orders:', error);
       throw createError.internal('Failed to get approved orders');
@@ -1498,7 +1557,7 @@ quotationData.deliveryAddress = customer.address
    * @param {boolean} isAdmin - Whether user is admin
    * @returns {Promise<Object>} Paginated confirmed orders
    */
-  async getConfirmedOrders(filters = {}, options = {}, currentUser, isAdmin) {
+  async getConfirmedOrders(filters = {}, options = {}, currentUser, isAdmin, companyId = null) {
     try {
       const {
         page = 1,
@@ -1517,6 +1576,11 @@ quotationData.deliveryAddress = customer.address
 
       // Build query
       const query = {};
+      
+      // Filter by companyId if provided
+      if (companyId) {
+        query.companyId = companyId;
+      }
 
       // Permission handling: Non-admin users can only see their own orders
       if (!isAdmin && currentUser && currentUser._id) {
@@ -2080,11 +2144,11 @@ quotationData.deliveryAddress = customer.address
    * @param {Object} options - Search options
    * @returns {Promise<Array>} Search results
    */
-  async searchQuotations(searchTerm, options = {}) {
+  async searchQuotations(searchTerm, options = {}, companyId = null) {
     try {
       const { limit = 20 } = options;
-
-      const quotations = await Quotation.find({
+      
+      const query = {
         $or: [
           { quotationNumber: new RegExp(searchTerm, 'i') },
           { title: new RegExp(searchTerm, 'i') },
@@ -2092,7 +2156,13 @@ quotationData.deliveryAddress = customer.address
           { 'customer.email': new RegExp(searchTerm, 'i') },
           { 'customer.custId': new RegExp(searchTerm, 'i') }
         ]
-      })
+      };
+      
+      if (companyId) {
+        query.companyId = companyId;
+      }
+
+      const quotations = await Quotation.find(query)
         .populate('createdBy', 'name email')
         .populate('customer.userId', 'name email')
         .populate({
@@ -2117,9 +2187,36 @@ quotationData.deliveryAddress = customer.address
    * Get quotation statistics
    * @returns {Promise<Object>} Quotation statistics
    */
-  async getQuotationStats() {
+  async getQuotationStats(companyId = null) {
     try {
-      const stats = await Quotation.getQuotationStats();
+      const query = {};
+      if (companyId) {
+        query.companyId = companyId;
+      }
+      
+      const stats = await Quotation.aggregate([
+        { $match: query },
+        {
+          $group: {
+            _id: null,
+            totalQuotations: { $sum: 1 },
+            totalValue: { $sum: '$totalAmount' },
+            byStatus: {
+              $push: {
+                status: '$status',
+                amount: '$totalAmount'
+              }
+            },
+            byMonth: {
+              $push: {
+                year: { $year: '$createdAt' },
+                month: { $month: '$createdAt' },
+                amount: '$totalAmount'
+              }
+            }
+          }
+        }
+      ]);
       
       if (stats.length === 0) {
         return {
@@ -3130,7 +3227,7 @@ quotationData.deliveryAddress = customer.address
    * @param {Object} options - Query options (dateFrom, dateTo, groupBy, etc.)
    * @returns {Promise<Object>} Quotation analytics data
    */
-  async getQuotationAnalytics(filters = {}, options = {}) {
+  async getQuotationAnalytics(filters = {}, options = {}, companyId = null) {
     try {
       const {
         dateFrom,
@@ -3145,6 +3242,11 @@ quotationData.deliveryAddress = customer.address
 
       // Build base query
       const baseQuery = {};
+      
+      // Filter by companyId if provided
+      if (companyId) {
+        baseQuery.companyId = companyId;
+      }
       
       if (status) baseQuery.status = status;
       if (customerId) baseQuery['customer.custId'] = customerId;

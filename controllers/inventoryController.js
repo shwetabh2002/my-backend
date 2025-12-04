@@ -31,8 +31,9 @@ class InventoryController {
     try {
       const inventoryData = req.body;
       const currentUser = req.user;
+      const { companyId } = req.query;
 
-      const inventory = await inventoryService.createInventory(inventoryData, currentUser);
+      const inventory = await inventoryService.createInventory(inventoryData, currentUser, companyId);
 
       res.status(201).json({
         success: true,
@@ -60,6 +61,7 @@ class InventoryController {
   // Get all inventory items with pagination and filters
   getInventoryItems = async (req, res) => {
     try {
+      const { companyId } = req.query;
       const filters = {
         type: req.query.type,
         category: req.query.category,
@@ -80,7 +82,7 @@ class InventoryController {
         sortOrder: req.query.sortOrder
       };
 
-      const result = await inventoryService.getInventoryItems(filters, paginationOptions);
+      const result = await inventoryService.getInventoryItems(filters, paginationOptions, companyId);
 
       res.status(200).json({
         success: true,
@@ -101,8 +103,9 @@ class InventoryController {
   getInventoryItemById = async (req, res) => {
     try {
       const { itemId } = req.params;
+      const { companyId } = req.query;
 
-      const item = await inventoryService.getInventoryItemById(itemId);
+      const item = await inventoryService.getInventoryItemById(itemId, companyId);
 
       res.status(200).json({
         success: true,
@@ -133,8 +136,9 @@ class InventoryController {
       const { itemId } = req.params;
       const updateData = req.body;
       const currentUser = req.user;
+      const { companyId } = req.query;
 
-      const updatedItem = await inventoryService.updateInventoryItem(itemId, updateData, currentUser);
+      const updatedItem = await inventoryService.updateInventoryItem(itemId, updateData, currentUser, companyId);
 
       res.status(200).json({
         success: true,
@@ -226,8 +230,9 @@ class InventoryController {
   getInventoryStats = async (req, res) => {
     try {
       const currentUser = req.user;
+      const { companyId } = req.query;
 
-      const stats = await inventoryService.getInventoryStats(currentUser);
+      const stats = await inventoryService.getInventoryStats(currentUser, companyId);
 
       res.status(200).json({
         success: true,
@@ -248,6 +253,7 @@ class InventoryController {
   searchInventory = async (req, res) => {
     try {
       const { query, limit } = req.query;
+      const { companyId } = req.query;
 
       if (!query) {
         return res.status(400).json({
@@ -257,7 +263,7 @@ class InventoryController {
         });
       }
 
-      const items = await inventoryService.searchInventory(query, parseInt(limit) || 10);
+      const items = await inventoryService.searchInventory(query, parseInt(limit) || 10, companyId);
 
       res.status(200).json({
         success: true,
@@ -278,9 +284,10 @@ class InventoryController {
   getLowStockAlerts = async (req, res) => {
     try {
       const { threshold } = req.query;
+      const { companyId } = req.query;
       const alertThreshold = parseInt(threshold) || 10;
 
-      const alerts = await inventoryService.getLowStockAlerts(alertThreshold);
+      const alerts = await inventoryService.getLowStockAlerts(alertThreshold, companyId);
 
       res.status(200).json({
         success: true,
@@ -311,6 +318,7 @@ class InventoryController {
         limit = 100
       } = req.query;
       
+      const { companyId } = req.query;
       const filters = {};
       if(category) filters.category = category;
       if(brand) filters.brand = brand;
@@ -325,7 +333,7 @@ class InventoryController {
         limit: Math.min(parseInt(limit), 1000) // Max 1000 items per page
       };
       
-      const items = await inventoryService.getInventorycategory(filters, currencyType, options);
+      const items = await inventoryService.getInventorycategory(filters, currencyType, options, companyId);
       
       res.status(200).json({
         success: true,
@@ -395,7 +403,8 @@ class InventoryController {
         limit: Math.min(parseInt(limit), 100) // Max 100 items per page
       };
 
-      const result = await inventoryService.getInventory(filters, options);
+      const { companyId } = req.query;
+      const result = await inventoryService.getInventory(filters, options, companyId);
 
       res.status(200).json({
         success: true,
@@ -599,7 +608,8 @@ class InventoryController {
       }
 
       // Call bulk create service
-      const results = await inventoryService.bulkCreateInventory(itemsData, currentUser);
+      const { companyId } = req.query;
+      const results = await inventoryService.bulkCreateInventory(itemsData, currentUser, companyId);
 
       // Determine response status
       const statusCode = results.failed.length === 0 ? 201 : 207; // 207 Multi-Status

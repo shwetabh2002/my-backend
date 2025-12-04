@@ -111,6 +111,9 @@ const schemas = {
     roleIds: Joi.array().items(Joi.string().hex().length(24)).min(1).required().messages({
       'array.min': 'At least one role is required',
       'any.required': 'Roles are required'
+    }),
+    companyId: Joi.string().trim().max(50).optional().messages({
+      'string.max': 'Company ID cannot exceed 50 characters'
     })
   }),
 
@@ -146,6 +149,9 @@ const schemas = {
     }),
     roleIds: Joi.array().items(Joi.string().hex().length(24)).min(1).messages({
       'array.min': 'At least one role is required'
+    }),
+    companyId: Joi.string().trim().max(50).optional().messages({
+      'string.max': 'Company ID cannot exceed 50 characters'
     })
   }).min(1), // At least one field must be provided
 
@@ -181,7 +187,10 @@ const schemas = {
       'string.pattern.base': 'Customer ID must be in format CUS-XXX'
     }),
     // Password is optional for customers (they can't login anyway)
-    password: Joi.string().optional()
+    password: Joi.string().optional(),
+    companyId: Joi.string().trim().max(50).optional().messages({
+      'string.max': 'Company ID cannot exceed 50 characters'
+    })
   }),
 
   // Supplier creation schema (no password, auto-assigned type and role)
@@ -207,7 +216,10 @@ const schemas = {
     }),
     address: Joi.string().max(200).messages({
       'string.max': 'Address cannot exceed 200 characters'
-    }) 
+    }),
+    companyId: Joi.string().trim().max(50).optional().messages({
+      'string.max': 'Company ID cannot exceed 50 characters'
+    })
   }),
 
   // Supplier update schema
@@ -232,6 +244,9 @@ const schemas = {
     }),
     status: Joi.string().valid('active', 'inactive', 'suspended').messages({
       'any.only': 'Status must be active, inactive, or suspended'
+    }),
+    companyId: Joi.string().trim().max(50).optional().messages({
+      'string.max': 'Company ID cannot exceed 50 characters'
     })
   }).min(1), // At least one field must be provided
 
@@ -426,7 +441,10 @@ const schemas = {
       width: Joi.number().optional(),
       height: Joi.number().optional(),
       weight: Joi.number().optional()
-    }).optional()
+    }).optional(),
+    companyId: Joi.string().trim().max(50).optional().messages({
+      'string.max': 'Company ID cannot exceed 50 characters'
+    })
   }),
 
   updateInventory: Joi.object({
@@ -518,7 +536,10 @@ const schemas = {
       width: Joi.number().optional(),
       height: Joi.number().optional(),
       weight: Joi.number().optional()
-    }).optional()
+    }).optional(),
+    companyId: Joi.string().trim().max(50).optional().messages({
+      'string.max': 'Company ID cannot exceed 50 characters'
+    })
   }).min(1), // At least one field must be provided
 
   updateStock: Joi.object({
@@ -529,6 +550,9 @@ const schemas = {
     }),
     operation: Joi.string().valid('add', 'subtract', 'set').default('add').messages({
       'any.only': 'Operation must be add, subtract, or set'
+    }),
+    companyId: Joi.string().trim().max(50).optional().messages({
+      'string.max': 'Company ID cannot exceed 50 characters'
     })
   }),
 
@@ -697,6 +721,9 @@ const schemas = {
     }),
     internalNotes: Joi.string().max(2000).optional().messages({
       'string.max': 'Internal notes cannot exceed 2000 characters'
+    }),
+    companyId: Joi.string().trim().max(50).optional().messages({
+      'string.max': 'Company ID cannot exceed 50 characters'
     })
   }),
 
@@ -807,6 +834,9 @@ const schemas = {
     }),
     internalNotes: Joi.string().max(2000).messages({
       'string.max': 'Internal notes cannot exceed 2000 characters'
+    }),
+    companyId: Joi.string().trim().max(50).optional().messages({
+      'string.max': 'Company ID cannot exceed 50 characters'
     })
   }).min(1), // At least one field must be provided
 
@@ -814,6 +844,9 @@ const schemas = {
     status: Joi.string().valid('active', 'inactive', 'suspended', 'pending', 'archived').required().messages({
       'any.only': 'Status must be one of: active, inactive, suspended, pending, archived',
       'any.required': 'Status is required'
+    }),
+    companyId: Joi.string().trim().max(50).optional().messages({
+      'string.max': 'Company ID cannot exceed 50 characters'
     })
   }),
 
@@ -1043,6 +1076,9 @@ const schemas = {
     description: Joi.string().max(1000).optional().messages({
       'string.max': 'Description cannot exceed 1000 characters'
     }),
+    companyId: Joi.string().trim().max(50).optional().messages({
+      'string.max': 'Company ID cannot exceed 50 characters'
+    })
   }),
 
   updateQuotation: Joi.object({
@@ -1207,6 +1243,9 @@ const schemas = {
     ).optional(),
     bookingAmount: Joi.number().min(0).optional().messages({
       'number.min': 'Booking amount cannot be negative'
+    }),
+    companyId: Joi.string().trim().max(50).optional().messages({
+      'string.max': 'Company ID cannot exceed 50 characters'
     })
   }).min(1), // At least one field must be provided
 
@@ -1214,6 +1253,9 @@ const schemas = {
     status: Joi.string().valid('draft', 'sent', 'viewed', 'accepted', 'rejected', 'expired', 'converted', 'booked').required().messages({
       'any.only': 'Status must be one of: draft, sent, viewed, accepted, rejected, expired, converted, booked',
       'any.required': 'Status is required'
+    }),
+    companyId: Joi.string().trim().max(50).optional().messages({
+      'string.max': 'Company ID cannot exceed 50 characters'
     })
   }),
 
@@ -1259,6 +1301,9 @@ const schemas = {
       paymentAmount: 0,
       paymentMethod: 'cash',
       paymentNotes: ''
+    }),
+    companyId: Joi.string().trim().max(50).optional().messages({
+      'string.max': 'Company ID cannot exceed 50 characters'
     })
   }),
 
@@ -1324,6 +1369,9 @@ const schemas = {
     status: Joi.string().valid('pending', 'approved', 'rejected', 'paid').optional(),
     approvalNotes: Joi.string().max(500).optional().messages({
       'string.max': 'Approval notes cannot exceed 500 characters'
+    }),
+    companyId: Joi.string().trim().max(50).optional().messages({
+      'string.max': 'Company ID cannot exceed 50 characters'
     })
   }),
 
@@ -1358,6 +1406,9 @@ const schemas = {
     countryCode: Joi.string().pattern(/^\+\d{1,3}$/).required().messages({
       'string.pattern.base': 'Country code must start with + followed by 1-3 digits (e.g., +1, +971, +44)',
       'any.required': 'Country code is required'
+    }),
+    companyId: Joi.string().trim().max(50).optional().messages({
+      'string.max': 'Company ID cannot exceed 50 characters'
     })
   }),
 
@@ -1386,6 +1437,9 @@ const schemas = {
     }),
     description: Joi.string().max(1000).optional().messages({
       'string.max': 'Description cannot exceed 1000 characters'
+    }),
+    companyId: Joi.string().trim().max(50).optional().messages({
+      'string.max': 'Company ID cannot exceed 50 characters'
     })
   }),
 
@@ -1412,6 +1466,9 @@ const schemas = {
     }),
     description: Joi.string().max(1000).optional().messages({
       'string.max': 'Description cannot exceed 1000 characters'
+    }),
+    companyId: Joi.string().trim().max(50).optional().messages({
+      'string.max': 'Company ID cannot exceed 50 characters'
     })
   })
 };

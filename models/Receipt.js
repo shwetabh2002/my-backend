@@ -105,6 +105,11 @@ const receiptSchema = new mongoose.Schema({
   },
 
 
+  companyId: {
+    type: String,
+    trim: true,
+    index: true
+  },
   // User references
   createdBy: {
     type: mongoose.Schema.Types.ObjectId,

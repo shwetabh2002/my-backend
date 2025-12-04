@@ -308,6 +308,11 @@ const customerInvoiceSchema = new mongoose.Schema({
     trim: true,
     maxlength: 200
   },
+  companyId: {
+    type: String,
+    trim: true,
+    index: true
+  },
   createdBy: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',

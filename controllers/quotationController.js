@@ -9,7 +9,8 @@ const createQuotation = async (req, res) => {
   try {
     const quotationData = req.body;
     const createdBy = req.user.id;
-    const quotation = await quotationService.createQuotation(quotationData, createdBy);
+    const { companyId } = req.query;
+    const quotation = await quotationService.createQuotation(quotationData, createdBy, companyId);
     console.log('Quotation created successfully:', quotation.quotationId);
 
     res.status(201).json({
@@ -44,6 +45,7 @@ const getQuotations = async (req, res) => {
     const filters = req.query;
     const currentUser = req.user;
     const isAdmin = currentUser?.type === 'admin';
+    const { companyId } = req.query;
     const options = {
       page: req.query.page || 1,
       limit: req.query.limit || 10,
@@ -59,7 +61,7 @@ const getQuotations = async (req, res) => {
       validTillTo: req.query.validTillTo
     };
 
-    const result = await quotationService.getQuotations(filters, options, currentUser, isAdmin);
+    const result = await quotationService.getQuotations(filters, options, currentUser, isAdmin, companyId);
 
     res.status(200).json({
       success: true,
@@ -85,7 +87,8 @@ const getQuotations = async (req, res) => {
 const getQuotationById = async (req, res) => {
   try {
     const { id } = req.params;
-    const quotation = await quotationService.getQuotationById(id);
+    const { companyId } = req.query;
+    const quotation = await quotationService.getQuotationById(id, companyId);
 
     res.status(200).json({
       success: true,
@@ -109,7 +112,8 @@ const getQuotationById = async (req, res) => {
 const getQuotationByNumber = async (req, res) => {
   try {
     const { number } = req.params;
-    const quotation = await quotationService.getQuotationByNumber(number);
+    const { companyId } = req.query;
+    const quotation = await quotationService.getQuotationByNumber(number, companyId);
 
     res.status(200).json({
       success: true,
@@ -135,8 +139,9 @@ const updateQuotation = async (req, res) => {
     const { id } = req.params;
     const updateData = req.body;
     const updatedBy = req.user.id;
+    const { companyId } = req.query;
 
-    const quotation = await quotationService.updateQuotation(id, updateData, updatedBy);
+    const quotation = await quotationService.updateQuotation(id, updateData, updatedBy, companyId);
 
     res.status(200).json({
       success: true,
@@ -315,11 +320,12 @@ const rejectQuotation = async (req, res) => {
 const getQuotationsByCustomer = async (req, res) => {
   try {
     const { customerId } = req.params;
+    const { companyId } = req.query;
     const options = {
       limit: req.query.limit || 50
     };
 
-    const quotations = await quotationService.getQuotationsByCustomer(customerId, options);
+    const quotations = await quotationService.getQuotationsByCustomer(customerId, options, companyId);
 
     res.status(200).json({
       success: true,
@@ -344,11 +350,12 @@ const getQuotationsByCustomer = async (req, res) => {
 const getQuotationsByStatus = async (req, res) => {
   try {
     const { status } = req.params;
+    const { companyId } = req.query;
     const options = {
       limit: req.query.limit || 50
     };
 
-    const quotations = await quotationService.getQuotationsByStatus(status, options);
+    const quotations = await quotationService.getQuotationsByStatus(status, options, companyId);
 
     res.status(200).json({
       success: true,
@@ -372,7 +379,8 @@ const getQuotationsByStatus = async (req, res) => {
  */
 const getExpiredQuotations = async (req, res) => {
   try {
-    const quotations = await quotationService.getExpiredQuotations();
+    const { companyId } = req.query;
+    const quotations = await quotationService.getExpiredQuotations(companyId);
 
     res.status(200).json({
       success: true,
@@ -397,7 +405,8 @@ const getExpiredQuotations = async (req, res) => {
 const getQuotationsExpiringSoon = async (req, res) => {
   try {
     const days = parseInt(req.query.days) || 3;
-    const quotations = await quotationService.getQuotationsExpiringSoon(days);
+    const { companyId } = req.query;
+    const quotations = await quotationService.getQuotationsExpiringSoon(days, companyId);
 
     res.status(200).json({
       success: true,
@@ -422,6 +431,7 @@ const getQuotationsExpiringSoon = async (req, res) => {
 const searchQuotations = async (req, res) => {
   try {
     const { q } = req.query;
+    const { companyId } = req.query;
     const options = {
       limit: req.query.limit || 20
     };
@@ -433,7 +443,7 @@ const searchQuotations = async (req, res) => {
       });
     }
 
-    const quotations = await quotationService.searchQuotations(q, options);
+    const quotations = await quotationService.searchQuotations(q, options, companyId);
 
     res.status(200).json({
       success: true,
@@ -457,7 +467,8 @@ const searchQuotations = async (req, res) => {
  */
 const getQuotationStats = async (req, res) => {
   try {
-    const stats = await quotationService.getQuotationStats();
+    const { companyId } = req.query;
+    const stats = await quotationService.getQuotationStats(companyId);
 
     res.status(200).json({
       success: true,
@@ -546,6 +557,7 @@ const getAcceptedQuotations = async (req, res) => {
       validTillTo
     } = req.query;
 
+    const { companyId } = req.query;
     const filters = {};
     const options = {
       page: parseInt(page),
@@ -561,7 +573,7 @@ const getAcceptedQuotations = async (req, res) => {
       validTillTo
     };
 
-    const result = await quotationService.getAcceptedQuotations(filters, options);
+    const result = await quotationService.getAcceptedQuotations(filters, options, companyId);
 
     res.status(200).json({
       success: true,
@@ -690,13 +702,14 @@ const confirmQuotation = async (req, res) => {
 const getReviewOrders = async (req, res) => {
   try {
     const filters = req.query;
+    const { companyId } = req.query;
     const options = {
       page: parseInt(req.query.page) || 1,
       limit: parseInt(req.query.limit) || 10,
       sort: req.query.sort || '-createdAt'
     };
 
-    const result = await quotationService.getReviewQuotations(filters, options);
+    const result = await quotationService.getReviewQuotations(filters, options, companyId);
 
     res.status(200).json({
       success: true,
@@ -722,13 +735,14 @@ const getReviewOrders = async (req, res) => {
 const getApprovedOrders = async (req, res) => {
   try {
     const filters = req.query;
+    const { companyId } = req.query;
     const options = {
       page: parseInt(req.query.page) || 1,
       limit: parseInt(req.query.limit) || 10,
       sort: req.query.sort || '-createdAt'
     };
 
-    const result = await quotationService.getApprovedOrders(filters, options);
+    const result = await quotationService.getApprovedOrders(filters, options, companyId);
 
     res.status(200).json({
       success: true,
@@ -770,6 +784,7 @@ const getConfirmedOrders = async (req, res) => {
       validTillTo
     } = req.query;
 
+    const { companyId } = req.query;
     const filters = {};
     const options = {
       page: parseInt(page),
@@ -785,7 +800,7 @@ const getConfirmedOrders = async (req, res) => {
       validTillTo
     };
 
-    const result = await quotationService.getConfirmedOrders(filters, options, currentUser, isAdmin);
+    const result = await quotationService.getConfirmedOrders(filters, options, currentUser, isAdmin, companyId);
 
     res.status(200).json({
       success: true,
@@ -807,12 +822,13 @@ const getConfirmedOrders = async (req, res) => {
 const getQuotationAnalytics = async (req, res) => {
   try {
     const filters = req.query;
+    const { companyId } = req.query;
     const options = {
       groupBy: req.query.groupBy || 'day',
       limit: parseInt(req.query.limit) || 30
     };
 
-    const analyticsData = await quotationService.getQuotationAnalytics(filters, options);
+    const analyticsData = await quotationService.getQuotationAnalytics(filters, options, companyId);
 
     res.status(200).json({
       success: true,
