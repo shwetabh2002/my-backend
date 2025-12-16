@@ -44,8 +44,7 @@ const receiptSchema = new mongoose.Schema({
     phone: {
       type: String,
       required: [true, 'Customer phone is required'],
-      trim: true,
-      maxlength: [20, 'Customer phone cannot exceed 20 characters']
+      trim: true
     },
     address: {
       type: String,

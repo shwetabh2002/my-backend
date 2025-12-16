@@ -32,7 +32,6 @@ const userSchema = new mongoose.Schema({
     type: String,
     required: [true, 'Phone is required'],
     trim: true,
-    maxlength: [15, 'Phone cannot exceed 15 characters'],
     match: [
       /^\+?[\d\s\-\(\)]+$/,
       'Please enter a valid phone number'

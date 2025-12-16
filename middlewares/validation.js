@@ -94,10 +94,8 @@ const schemas = {
       'string.email': 'Please provide a valid email address',
       'any.required': 'Email is required'
     }),
-    phone: Joi.string().pattern(/^\+?[\d\s\-\(\)]+$/).min(10).max(15).messages({
-      'string.pattern.base': 'Please provide a valid phone number',
-      'string.min': 'Phone number must be at least 10 characters',
-      'string.max': 'Phone number cannot exceed 15 characters'
+    phone: Joi.string().pattern(/^\+?[\d\s\-\(\)]+$/).messages({
+      'string.pattern.base': 'Please provide a valid phone number'
     }),
     password: Joi.string().min(6).required().messages({
       'string.min': 'Password must be at least 6 characters long',
@@ -126,10 +124,8 @@ const schemas = {
     email: Joi.string().email().messages({
       'string.email': 'Please provide a valid email address'
     }),
-    phone: Joi.string().pattern(/^\+?[\d\s\-\(\)]+$/).min(10).max(15).messages({
-      'string.pattern.base': 'Please provide a valid phone number',
-      'string.min': 'Phone number must be at least 10 characters',
-      'string.max': 'Phone number cannot exceed 15 characters'
+    phone: Joi.string().pattern(/^\+?[\d\s\-\(\)]+$/).messages({
+      'string.pattern.base': 'Please provide a valid phone number'
     }),
     type: Joi.string().valid('employee', 'admin', 'customer').messages({
       'any.only': 'User type must be employee, admin, or customer'
@@ -160,10 +156,8 @@ const schemas = {
       'string.email': 'Please provide a valid email address',
       'any.required': 'Email is required'
     }),
-    phone: Joi.string().pattern(/^\+?[\d\s\-\(\)]+$/).min(10).max(15).required().messages({
+    phone: Joi.string().pattern(/^\+?[\d\s\-\(\)]+$/).required().messages({
       'string.pattern.base': 'Please provide a valid phone number',
-      'string.min': 'Phone number must be at least 10 characters',
-      'string.max': 'Phone number cannot exceed 15 characters',
       'any.required': 'Phone is required'
     }),
     countryCode: Joi.string().pattern(/^\+\d{1,3}$/).required().messages({
@@ -195,10 +189,8 @@ const schemas = {
       'string.email': 'Please provide a valid email address',
       'any.required': 'Email is required'
     }),
-    phone: Joi.string().pattern(/^\+?[\d\s\-\(\)]+$/).min(10).max(15).required().messages({
+    phone: Joi.string().pattern(/^\+?[\d\s\-\(\)]+$/).required().messages({
       'string.pattern.base': 'Please provide a valid phone number',
-      'string.min': 'Phone number must be at least 10 characters',
-      'string.max': 'Phone number cannot exceed 15 characters',
       'any.required': 'Phone is required'
     }),
     countryCode: Joi.string().pattern(/^\+\d{1,3}$/).required().messages({
@@ -219,10 +211,8 @@ const schemas = {
     email: Joi.string().email().messages({
       'string.email': 'Please provide a valid email address'
     }),
-    phone: Joi.string().pattern(/^\+?[\d\s\-\(\)]+$/).min(10).max(15).messages({
-      'string.pattern.base': 'Please provide a valid phone number',
-      'string.min': 'Phone number must be at least 10 characters',
-      'string.max': 'Phone number cannot exceed 15 characters'
+    phone: Joi.string().pattern(/^\+?[\d\s\-\(\)]+$/).messages({
+      'string.pattern.base': 'Please provide a valid phone number'
     }),
     countryCode: Joi.string().pattern(/^\+\d{1,3}$/).messages({
       'string.pattern.base': 'Country code must start with + followed by 1-3 digits (e.g., +1, +971, +44)'
@@ -571,16 +561,12 @@ const schemas = {
       'string.email': 'Please provide a valid email address',
       'any.required': 'Email is required'
     }),
-    phone: Joi.string().pattern(/^\+?[\d\s\-\(\)]+$/).min(10).max(20).required().messages({
+    phone: Joi.string().pattern(/^\+?[\d\s\-\(\)]+$/).required().messages({
       'string.pattern.base': 'Please provide a valid phone number',
-      'string.min': 'Phone number must be at least 10 characters',
-      'string.max': 'Phone number cannot exceed 20 characters',
       'any.required': 'Phone is required'
     }),
-    fax: Joi.string().pattern(/^\+?[\d\s\-\(\)]+$/).min(10).max(20).optional().messages({
-      'string.pattern.base': 'Please provide a valid fax number',
-      'string.min': 'Fax number must be at least 10 characters',
-      'string.max': 'Fax number cannot exceed 20 characters'
+    fax: Joi.string().pattern(/^\+?[\d\s\-\(\)]+$/).optional().messages({
+      'string.pattern.base': 'Please provide a valid fax number'
     }),
     address: Joi.object({
       street: Joi.string().min(5).max(200).required().messages({
@@ -634,10 +620,8 @@ const schemas = {
         'string.email': 'Please provide a valid email address',
         'any.required': 'Contact email is required'
       }),
-      phone: Joi.string().pattern(/^\+?[\d\s\-\(\)]+$/).min(10).max(20).required().messages({
+      phone: Joi.string().pattern(/^\+?[\d\s\-\(\)]+$/).required().messages({
         'string.pattern.base': 'Please provide a valid phone number',
-        'string.min': 'Phone number must be at least 10 characters',
-        'string.max': 'Phone number cannot exceed 20 characters',
         'any.required': 'Contact phone is required'
       }),
       position: Joi.string().min(2).max(100).required().messages({
@@ -734,15 +718,11 @@ const schemas = {
     email: Joi.string().email().messages({
       'string.email': 'Please provide a valid email address'
     }),
-    phone: Joi.string().pattern(/^\+?[\d\s\-\(\)]+$/).min(10).max(20).messages({
-      'string.pattern.base': 'Please provide a valid phone number',
-      'string.min': 'Phone number must be at least 10 characters',
-      'string.max': 'Phone number cannot exceed 20 characters'
+    phone: Joi.string().pattern(/^\+?[\d\s\-\(\)]+$/).messages({
+      'string.pattern.base': 'Please provide a valid phone number'
     }),
-    fax: Joi.string().pattern(/^\+?[\d\s\-\(\)]+$/).min(10).max(20).messages({
-      'string.pattern.base': 'Please provide a valid fax number',
-      'string.min': 'Fax number must be at least 10 characters',
-      'string.max': 'Fax number cannot exceed 20 characters'
+    fax: Joi.string().pattern(/^\+?[\d\s\-\(\)]+$/).messages({
+      'string.pattern.base': 'Please provide a valid fax number'
     }),
     address: Joi.object({
       street: Joi.string().min(5).max(200).required(),
@@ -827,10 +807,8 @@ const schemas = {
       'string.email': 'Please provide a valid email address',
       'any.required': 'Contact email is required'
     }),
-    phone: Joi.string().pattern(/^\+?[\d\s\-\(\)]+$/).min(10).max(20).required().messages({
+    phone: Joi.string().pattern(/^\+?[\d\s\-\(\)]+$/).required().messages({
       'string.pattern.base': 'Please provide a valid phone number',
-      'string.min': 'Phone number must be at least 10 characters',
-      'string.max': 'Phone number cannot exceed 20 characters',
       'any.required': 'Contact phone is required'
     }),
     position: Joi.string().min(2).max(100).required().messages({
@@ -849,10 +827,8 @@ const schemas = {
     email: Joi.string().email().messages({
       'string.email': 'Please provide a valid email address'
     }),
-    phone: Joi.string().pattern(/^\+?[\d\s\-\(\)]+$/).min(10).max(20).messages({
-      'string.pattern.base': 'Please provide a valid phone number',
-      'string.min': 'Phone number must be at least 10 characters',
-      'string.max': 'Phone number cannot exceed 20 characters'
+    phone: Joi.string().pattern(/^\+?[\d\s\-\(\)]+$/).messages({
+      'string.pattern.base': 'Please provide a valid phone number'
     }),
     position: Joi.string().min(2).max(100).messages({
       'string.min': 'Position must be at least 2 characters long',
@@ -1342,9 +1318,7 @@ const schemas = {
       'string.min': 'Password must be at least 6 characters long',
       'any.required': 'Password is required'
     }),
-    phone: Joi.string().min(7).max(15).required().messages({
-      'string.min': 'Phone number must be at least 7 characters long',
-      'string.max': 'Phone number cannot exceed 15 characters',
+    phone: Joi.string().required().messages({
       'any.required': 'Phone number is required'
     }),
     roleType: Joi.string().valid('SALES', 'FINANCE').required().messages({
