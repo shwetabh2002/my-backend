@@ -555,8 +555,7 @@ class CustomerInvoiceService {
       
       // Calculate item costs using current inventory cost prices
       const itemCosts = invoice.items.reduce((sum, item) => {
-        const currentCostPrice = item.itemId ? 
-          (costPriceMap.get(item.itemId.toString()) || 0) : 
+        const currentCostPrice = 
           (item.costPrice || 0);
         return sum + (currentCostPrice * (item.quantity || 0));
       }, 0);

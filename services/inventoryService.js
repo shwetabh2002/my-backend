@@ -640,8 +640,10 @@ class InventoryService {
       
       // Convert prices efficiently and filter vinNumber array
       const convertedItems = items.map(item => {
-        const originalPrice = item.sellingPrice || 0;
-        const convertedPrice = Math.round(originalPrice * exchangeRate * 100) / 100;
+        const originalSellingPrice = item.sellingPrice || 0;
+        const originalCostPrice = item.costPrice || 0;
+        const convertedSellingPrice = Math.round(originalSellingPrice * exchangeRate * 100) / 100;
+        const convertedCostPrice = Math.round(originalCostPrice * exchangeRate * 100) / 100;
         
         // Filter vinNumber array to only include active status items
         const activeVinNumbers = item.vinNumber ? 
@@ -651,7 +653,8 @@ class InventoryService {
           ...item,
           vinNumber: activeVinNumbers, // Only return active VIN numbers
           currencyType: currencyType.toUpperCase(),
-          newSellingPrice: convertedPrice
+          newSellingPrice: convertedSellingPrice,
+          newCostPrice: convertedCostPrice
         };
       });
       

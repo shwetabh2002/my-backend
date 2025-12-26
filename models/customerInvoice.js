@@ -123,6 +123,11 @@ const customerInvoiceSchema = new mongoose.Schema({
       required: true,
       min: 0
     },
+    costPrice: {
+      type: Number,
+      required: true,
+      min: 0
+    },
     condition: {
       type: String,
       enum: ['new', 'used', 'refurbished', 'damaged'],

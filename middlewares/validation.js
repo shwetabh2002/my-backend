@@ -921,6 +921,10 @@ const schemas = {
         'number.min': 'Selling price cannot be negative',
         'any.required': 'Selling price is required'
       }),
+      costPrice: Joi.number().min(0).required().messages({
+        'number.min': 'Selling price cannot be negative',
+        'any.required': 'Selling price is required'
+      }),
       condition: Joi.string().valid('new', 'used', 'refurbished', 'damaged').default('new').messages({
         'any.only': 'Condition must be new, used, refurbished, or damaged'
       }),
